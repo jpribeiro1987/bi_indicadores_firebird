@@ -14,8 +14,15 @@ export default function Dashboards({ userRole, userSectors = [] }) {
   const [selectedSectorId, setSelectedSectorId] = useState('ALL');
   const [availableSectors, setAvailableSectors] = useState([]);
 
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const getDefaultStartDate = () => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 1);
+    return d.toISOString().split('T')[0];
+  };
+  const getDefaultEndDate = () => new Date().toISOString().split('T')[0];
+
+  const [startDate, setStartDate] = useState(getDefaultStartDate());
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
 
   const filterByDate = (dataArray, colX, start, end) => {
     if (!start && !end) return dataArray;
