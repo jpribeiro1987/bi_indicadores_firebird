@@ -233,6 +233,16 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     };
   };
 
+
+  const handleSync = async () => {
+    try {
+      await axios.post('/api/dashboards/sync');
+      alert('Sincronização iniciada com sucesso! O processo roda em background. Atualize a tela em alguns instantes.');
+    } catch (err) {
+      alert('Erro ao disparar sincronização');
+    }
+  };
+
   return (
     <div style={{ padding: '24px' }}>
             
@@ -257,6 +267,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             ))}
           </select>
           
+          <button onClick={handleSync} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '8px 16px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Atualizar Agora
+          </button>
           <button onClick={() => window.print()} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '8px 16px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             🖨️ Imprimir
           </button>

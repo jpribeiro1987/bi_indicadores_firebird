@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const { syncBiData } = require('../services/alertJob');
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -20,11 +21,23 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Forçar sincronização imediata do BI
+router.post('/sync', async (req, res) => {
+  try {
+    // Roda a rotina de sync em background (não aguarda para não dar timeout caso seja longo)
+    syncBiData();
+    res.json({ success: true, message: 'Sincronização iniciada com sucesso!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao disparar sincronização' });
+  }
+});
+
 // Salvar posições do grid
 router.put('/:id/layout', async (req, res) => {
   try {
     const { id } = req.params;
-    const { layout } = req.body; // array of { indicadorId, pos_x, pos_y, largura, altura }
+    const { layout } = req.body;
 
     for (const item of layout) {
       await prisma.dashboardIndicador.update({
