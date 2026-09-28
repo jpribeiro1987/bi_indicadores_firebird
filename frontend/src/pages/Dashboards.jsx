@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout';
+import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
 import { Save } from 'lucide-react';
