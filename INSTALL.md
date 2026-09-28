@@ -1,6 +1,6 @@
 # Guia de Instalação e Implantação Local (Ubuntu Server)
 
-Este guia descreve os passos necessários para hospedar o **Sistema de Gestão de Contratos** em um servidor Linux (Ubuntu/Debian) utilizando o Docker.
+Este guia descreve os passos necessários para hospedar o **Sistema de Indicadores Hospitalar (BI)** em um servidor Linux (Ubuntu/Debian) utilizando o Docker.
 
 ## 1. Instalando as Dependências (Docker e Git)
 
@@ -39,8 +39,8 @@ Para garantir que está tudo certo, rode: `docker compose version`. Se a versão
 Vá para a pasta onde deseja salvar a aplicação (ex: `/var/www` ou `/opt`) e clone o repositório do Github:
 ```bash
 cd /opt
-sudo git clone https://github.com/jpribeiro1987/gerenciamento_de_contratos.git
-cd gerenciamento_de_contratos
+sudo git clone https://github.com/jpribeiro1987/bi_indicadores_firebird.git
+cd bi_indicadores_firebird
 ```
 
 **Passo 2.2: Construir e Iniciar os Contêineres**
@@ -53,9 +53,9 @@ sudo docker compose up --build -d
 - `-d`: Vai rodar o sistema em segundo plano de forma "desacoplada" do seu terminal.
 
 **Passo 2.3: Liberar o Firewall (Caso esteja ativo)**
-Se o Ubuntu estiver rodando o firewall padrão (UFW), libere a porta 80 para permitir que a rede acesse o sistema:
+Se o Ubuntu estiver rodando o firewall padrão (UFW), libere a porta **8089** para permitir que a rede acesse o sistema:
 ```bash
-sudo ufw allow 80/tcp
+sudo ufw allow 8089/tcp
 ```
 
 **Passo 2.4: Acessar a Aplicação**
@@ -63,20 +63,20 @@ sudo ufw allow 80/tcp
 ```bash
 ip a
 ```
-- Digite esse endereço de IP no navegador de outra máquina. Exemplo: `http://192.168.0.50`
+- Digite esse endereço de IP no navegador de outra máquina seguido da porta 8089. Exemplo: `http://192.168.0.50:8089`
 
 ---
 
 ## 3. Manutenção e Persistência de Dados
 
-O banco de dados SQLite (`dev.db`) e os PDFs (`/uploads`) foram configurados via "Volumes" no `docker-compose.yml`. Isso significa que todos os cadastros e anexos ficam salvos nas pastas nativas do Ubuntu (`/opt/gerenciamento_de_contratos/backend/prisma` e `/opt/gerenciamento_de_contratos/backend/uploads`).
+O banco de dados de cache SQLite (`dev.db`) e os diretórios internos foram configurados via "Volumes" no `docker-compose.yml`. Isso significa que todas as configurações do sistema ficam salvas nas pastas nativas do Ubuntu.
 
 Se você precisar reiniciar o servidor ou derrubar os contêineres:
 ```bash
 sudo docker compose down
 sudo docker compose up -d
 ```
-Os dados **não** serão perdidos.
+Os layouts dos dashboards não serão perdidos.
 
 ---
 
@@ -86,7 +86,7 @@ Se houver novas atualizações de código no Github, é muito fácil atualizar s
 
 ```bash
 # 1. Entre na pasta do projeto
-cd /opt/gerenciamento_de_contratos
+cd /opt/bi_indicadores_firebird
 
 # 2. Puxe as atualizações
 sudo git pull origin main
