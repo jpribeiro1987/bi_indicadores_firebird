@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import ReactGridLayout from 'react-grid-layout';
+import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout';
+const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
 import { Save } from 'lucide-react';
 import 'react-grid-layout/css/styles.css';
@@ -148,7 +149,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     }
   };
 
-  const onLayoutChange = (newLayout) => {
+  const onLayoutChange = (newLayout, allLayouts) => {
     setLayout(newLayout);
   };
 
@@ -320,12 +321,12 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       </div>
 
       {activeDash && layout.length > 0 && (
-        <ReactGridLayout
+        <ResponsiveGridLayoutWithWidth layouts={{ lg: layout }}
           className="layout"
-          layout={layout}
-          cols={12}
+          
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
           rowHeight={30}
-          width={1200}
           onLayoutChange={onLayoutChange}
         >
           
@@ -389,7 +390,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
               </div>
             );
           })}
-        </ReactGridLayout>
+        </ResponsiveGridLayoutWithWidth>
       )}
       
       {!activeDash && dashboards.length > 0 && (
