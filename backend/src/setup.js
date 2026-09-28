@@ -11,13 +11,12 @@ async function main() {
   for (const email of emails) {
     await prisma.usuario.upsert({
       where: { email },
-      update: { senha: senhaPadrao, perfil: 'ADMIN', ativo: true },
+      update: { senha: senhaPadrao, perfil: 'ADMIN' },
       create: { 
         email, 
         senha: senhaPadrao, 
         nome: 'Administrador', 
-        perfil: 'ADMIN', 
-        ativo: true 
+        perfil: 'ADMIN'
       }
     });
     console.log(`Usuário ${email} garantido no banco! (Senha: 123456)`);
