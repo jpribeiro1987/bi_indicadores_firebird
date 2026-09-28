@@ -212,52 +212,42 @@ tbody tr:hover {
 h1, h2, h3 { margin: 0; }
 
 /* Print Styles */
+
+
 @media print {
-  /* Hide UI elements */
-  .sidebar, .print-hide, .theme-toggle, button {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  body { 
+    background: white !important; 
+    -webkit-print-color-adjust: exact;
+  }
+  .sidebar, .no-print, header, nav, select, input[type="date"], button {
     display: none !important;
   }
+  .page-container { margin: 0 !important; padding: 0 !important; }
   
-  /* Reset layout for printing */
-  .app-container {
+  /* Disable React Grid Layout absolute positioning for print */
+  .react-grid-layout {
+    height: auto !important;
     display: block !important;
-    background: #fff !important;
-    color: #000 !important;
   }
-  
-  .main-content {
-    padding: 0 !important;
-    overflow: visible !important;
-    max-height: none !important;
-    background: #fff !important;
-  }
-  
-  .glass-card {
-    border: none !important;
+  .react-grid-item {
+    position: relative !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important; /* Allow it to grow for tables, echarts adapts */
+    min-height: 350px !important; 
+    margin-bottom: 40px !important;
+    page-break-inside: avoid !important;
+    border: 1px solid #ddd !important;
     box-shadow: none !important;
-    background: transparent !important;
-    padding: 0 !important;
   }
-  
-  body {
-    background: #fff !important;
-    color: #000 !important;
+  .react-grid-item > div {
+    height: 100% !important;
   }
-  
-  table, th, td {
-    border-color: #ddd !important;
-    color: #000 !important;
-  }
-
-  th {
-    background-color: #f8f9fa !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .badge {
-    border: 1px solid #ccc !important;
-    background: transparent !important;
-    color: #000 !important;
+  .react-resizable-handle {
+    display: none !important;
   }
 }

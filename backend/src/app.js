@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv');
-const { checkContractsAndAlert, scheduleAlertJob } = require('./services/alertJob');
+
 
 dotenv.config();
 
@@ -20,6 +20,10 @@ const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const alertasRoutes = require('./routes/alertas');
 const ittsRouter = require('./routes/itts');
+const indicadoresRoutes = require('./routes/indicadores');
+const dashboardsRoutes = require('./routes/dashboards');
+const conexoesRoutes = require('./routes/conexoes');
+const categoriasRoutes = require('./routes/categorias');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/setores', sectorsRoutes);
@@ -30,6 +34,10 @@ app.use('/api/documentos', documentosRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/itts', ittsRouter);
+app.use('/api/indicadores', indicadoresRoutes);
+app.use('/api/dashboards', dashboardsRoutes);
+app.use('/api/conexoes', conexoesRoutes);
+app.use('/api/categorias', categoriasRoutes);
 
 // Simple healthcheck
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

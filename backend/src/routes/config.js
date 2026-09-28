@@ -117,4 +117,19 @@ router.put('/', async (req, res) => {
   }
 });
 
+router.post('/', async (req, res) => {
+  try {
+    for (const key of Object.keys(req.body)) {
+      await prisma.configuracao.upsert({
+        where: { chave: key },
+        update: { valor: String(req.body[key]) },
+        create: { chave: key, valor: String(req.body[key]) }
+      });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao salvar' });
+  }
+});
+
 module.exports = router;

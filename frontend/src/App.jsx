@@ -9,11 +9,13 @@ import SetoresUsuarios from './pages/SetoresUsuarios';
 import Login from './pages/Login';
 import Configuracoes from './pages/Configuracoes';
 import Relatorios from './pages/Relatorios';
-import FilaEmails from './pages/FilaEmails';
+
+import Dashboards from './pages/Dashboards';
+import ConstrutorIndicadores from './pages/ConstrutorIndicadores';
 import './index.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboards');
   const [user, setUser] = useState(null);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'theme-light');
 
@@ -52,12 +54,15 @@ function App() {
   // mas o ideal seria passar o array completo. Vou passar a prop `userSectors` também.
   const userRole = user.perfil;
   const userSector = user.setores && user.setores.length > 0 ? user.setores[0].id : null;
+  const userSectorsIds = user.setores ? user.setores.map(s => s.id) : [];
 
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole={userRole} onLogout={handleLogout} theme={theme} setTheme={setTheme} />
       <main className="main-content">
         {activeTab === 'dashboard' && <Dashboard userRole={userRole} userSector={userSector} />}
+        {activeTab === 'dashboards' && <Dashboards userRole={userRole} userSectors={userSectorsIds} />}
+        {activeTab === 'construtor' && <ConstrutorIndicadores userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'novo_contrato' && <NovoContrato />}
         {activeTab === 'configuracoes' && <Configuracoes />}
         {activeTab === 'contratos' && <Contratos userRole={userRole} userSector={userSector} />}
@@ -65,7 +70,7 @@ function App() {
         {activeTab === 'documentos' && <Documentos userRole={userRole} userSector={userSector} />}
         {activeTab === 'setores' && <SetoresUsuarios />}
         {activeTab === 'relatorios' && <Relatorios userRole={userRole} userSector={userSector} />}
-        {activeTab === 'fila_emails' && <FilaEmails userRole={userRole} />}
+        
       </main>
     </div>
   );

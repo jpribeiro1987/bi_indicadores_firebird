@@ -17,6 +17,8 @@ model Setor {
   itts       Itt[]
   documentos Documento[]
   usuarios   Usuario[]   @relation("UsuarioSetor")
+  dashboards Dashboard[] @relation("DashboardSetor")
+  indicadores Indicador[] @relation("IndicadorSetor")
 }
 
 model Usuario {
@@ -155,4 +157,93 @@ model HistoricoAlertaDocumento {
   destinatarios String
   status_envio String
   erro         String?
+}
+  
+model ConexaoBanco {
+  id        Int      @id @default(autoincrement())
+  nome      String   
+  host      String   
+  porta     Int      @default(3050)
+  caminho   String   
+  usuario   String
+  senha     String   
+}
+
+model Indicador {
+  id             Int        @id @default(autoincrement())
+  codigo         String?
+  nome           String
+  descricao      String?
+  desc_formula   String?
+  fonte_referencia String?
+  categoria      String?
+  subcategoria   String?
+  unidade_medida String?
+  orientacao     String?
+  frequencia     String?
+  setorId Int?
+  peso           Float?
+  ativo          Boolean    @default(true)
+  tipo_consulta  String?    @default("SQL")
+  conexaoId      Int?
+  setor          Setor?     @relation("IndicadorSetor", fields: [setorId], references: [id])
+  
+  query_sql      String     
+  tipo_grafico   String     
+  coluna_x       String?    
+  coluna_y       String?    
+  dias_alerta    Int?       
+  
+  dashboards     DashboardIndicador[]
+  metas          MetaIndicador[]
+  cache          CacheIndicador?
+}
+
+model CacheIndicador {
+  id            Int       @id @default(autoincrement())
+  indicadorId   Int       @unique
+  indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  dados_json    String
+  atualizado_em DateTime  @default(now())
+}
+
+model CategoriaIndicador {
+  id             Int                     @id @default(autoincrement())
+  nome           String                  @unique
+  subcategorias  SubcategoriaIndicador[]
+}
+
+model SubcategoriaIndicador {
+  id           Int                @id @default(autoincrement())
+  nome         String
+  categoriaId  Int
+  categoria    CategoriaIndicador @relation(fields: [categoriaId], references: [id])
+}
+
+model MetaIndicador {
+  id            Int       @id @default(autoincrement())
+  indicadorId   Int
+  indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  descricao     String
+  valor_alvo    Float
+  data_limite   DateTime?
+}
+
+model Dashboard {
+  id          Int                  @id @default(autoincrement())
+  nome        String
+  setores     Setor[]              @relation("DashboardSetor")
+  indicadores DashboardIndicador[]
+}
+
+model DashboardIndicador {
+  dashboardId  Int
+  indicadorId  Int
+  pos_x        Int     
+  pos_y        Int
+  largura      Int
+  altura       Int
+  dashboard    Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  indicador    Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  @@id([dashboardId, indicadorId])
 }

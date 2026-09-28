@@ -9,94 +9,51 @@ const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme 
   return (
     <aside className="sidebar">
       <div className="sidebar-title" style={{ padding: '24px 24px 12px 24px', justifyContent: 'center' }}>
-        <img src="/logo.png" alt="Logo Instituição" style={{ maxHeight: '60px', width: 'auto', objectFit: 'contain' }} 
+        <img src="/logo.png" alt="Logo Instituicao" style={{ maxHeight: '60px', width: 'auto', objectFit: 'contain' }} 
              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
         <div style={{ display: 'none', alignItems: 'center', gap: '8px' }}>
           <Grid size={24} />
-          Sistema de Gestão de Contratos e Instruções Técnicas de Trabalho (ITT)
+          Sistema de Indicadores Hospitalar
         </div>
       </div>
       
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
         <div 
-          className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
+          className={`nav-item ${activeTab === 'dashboards' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboards')}
         >
-          <LayoutDashboard size={20} />
-          <span>Dashboard</span>
+          <Grid size={20} />
+          <span>Dashboards (BI)</span>
         </div>
-
-        {userRole === 'ADMIN' && (
-          <div 
-            className={`nav-item ${activeTab === 'novo_contrato' ? 'active' : ''}`}
-            onClick={() => setActiveTab('novo_contrato')}
-          >
-            <PlusCircle size={20} />
-            <span>Novo Contrato</span>
-          </div>
-        )}
         
-        <div 
-          className={`nav-item ${activeTab === 'contratos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('contratos')}
-        >
-          <FileText size={20} />
-          <span>Contratos</span>
-        </div>
-
-        <div 
-          className={`nav-item ${activeTab === 'itts' ? 'active' : ''}`}
-          onClick={() => setActiveTab('itts')}
-        >
-          <FileText size={20} />
-          <span>Instruções (ITT)</span>
-        </div>
-
-        <div 
-          className={`nav-item ${activeTab === 'documentos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('documentos')}
-        >
-          <FileText size={20} />
-          <span>CNDs & Documentos</span>
-        </div>
-
-        <div 
-          className={`nav-item ${activeTab === 'relatorios' ? 'active' : ''}`}
-          onClick={() => setActiveTab('relatorios')}
-        >
-          <Printer size={20} />
-          <span>Relatórios</span>
-        </div>
-
         {userRole === 'ADMIN' && (
-          <div 
-            className={`nav-item ${activeTab === 'setores' ? 'active' : ''}`}
-            onClick={() => setActiveTab('setores')}
-          >
-            <Users size={20} />
-            <span>Setores & Usuários</span>
-          </div>
+          <>
+            <div 
+              className={`nav-item ${activeTab === 'setores' ? 'active' : ''}`}
+              onClick={() => setActiveTab('setores')}
+            >
+              <Users size={20} />
+              <span>Usuários</span>
+            </div>
+            
+            <div 
+              className={`nav-item ${activeTab === 'construtor' ? 'active' : ''}`}
+              onClick={() => setActiveTab('construtor')}
+            >
+              <PlusCircle size={20} />
+              <span>Construtor de BI</span>
+            </div>
+
+            <div 
+              className={`nav-item ${activeTab === 'configuracoes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('configuracoes')}
+            >
+              <Settings size={20} />
+              <span>Configurações</span>
+            </div>
+          </>
         )}
 
-        {userRole === 'ADMIN' && (
-          <div 
-            className={`nav-item ${activeTab === 'configuracoes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('configuracoes')}
-          >
-            <Settings size={20} />
-            <span>Configurações</span>
-          </div>
-        )}
-
-        {userRole === 'ADMIN' && (
-          <div 
-            className={`nav-item ${activeTab === 'fila_emails' ? 'active' : ''}`}
-            onClick={() => setActiveTab('fila_emails')}
-          >
-            <Mail size={20} />
-            <span>Fila de E-mails</span>
-          </div>
-        )}
       </nav>
 
       <div style={{ padding: '24px', borderTop: '1px solid var(--panel-border)', marginTop: 'auto' }}>

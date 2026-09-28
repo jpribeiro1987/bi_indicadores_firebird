@@ -2,27 +2,21 @@ version: '3.8'
 
 services:
   backend:
-    build:
+    build: 
       context: ./backend
-    container_name: contratos-backend
-    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=production
       - DATABASE_URL=file:./dev.db
-      - JWT_SECRET=chave_segura_producao
-      - TZ=America/Sao_Paulo
     volumes:
-      # Monta as pastas para persistir os anexos em PDF
-      - ./backend/uploads:/app/uploads
-      # Monta a pasta do banco de dados (SQLite)
       - ./backend/prisma:/app/prisma
+      - ./backend/uploads:/app/uploads
+      - ./backups:/app/backups
 
   frontend:
-    build:
+    build: 
       context: ./frontend
-    container_name: contratos-frontend
-    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
