@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
         pos_x: 0,
         pos_y: newY,
         largura: 6,
-        altura: 4
+          altura: 12
       }
     });
 

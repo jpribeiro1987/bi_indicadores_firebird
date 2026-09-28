@@ -327,6 +327,8 @@ export default function Dashboards({ userRole, userSectors = [] }) {
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 1, xxs: 1 }}
           rowHeight={30}
+            margin={[24, 24]}
+            containerPadding={[0, 0]}
           onLayoutChange={onLayoutChange}
         >
           
@@ -337,7 +339,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             
             return (
 
-              <div key={ind.id.toString()} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column' }}>
+              <div key={ind.id.toString()} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-main)' }}>{ind.nome}</h4>
                 
                 <div style={{ flex: 1, position: 'relative' }}>
