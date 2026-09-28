@@ -9,6 +9,7 @@ router.get('/', async (req, res) => {
     const dashboards = await prisma.dashboard.findMany({
       include: {
         indicadores: {
+          where: { indicador: { ativo: true } },
           include: { indicador: true }
         }
       }
@@ -25,7 +26,7 @@ router.get('/', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     // Roda a rotina de sync em background (não aguarda para não dar timeout caso seja longo)
-    syncBiData();
+    syncBiData('MANUAL');
     res.json({ success: true, message: 'Sincronização iniciada com sucesso!' });
   } catch (error) {
     console.error(error);

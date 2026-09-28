@@ -247,3 +247,13 @@ model DashboardIndicador {
   indicador    Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
   @@id([dashboardId, indicadorId])
 }
+
+ m o d e l   L o g S i n c r o n i z a c a o   { 
+     i d                 I n t             @ i d   @ d e f a u l t ( a u t o i n c r e m e n t ( ) ) 
+     d a t a             D a t e T i m e   @ d e f a u l t ( n o w ( ) ) 
+     t i p o             S t r i n g       / /   A U T O M A T I C O ,   M A N U A L 
+     s u c e s s o       B o o l e a n 
+     d e t a l h e s     S t r i n g ? 
+ } 
+  
+ 

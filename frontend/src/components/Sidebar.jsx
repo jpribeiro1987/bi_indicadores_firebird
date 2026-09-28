@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, Activity, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme }) => {
   const toggleTheme = () => {

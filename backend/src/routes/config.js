@@ -132,4 +132,17 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+router.get('/logs', async (req, res) => {
+  try {
+    const logs = await prisma.logSincronizacao.findMany({
+      orderBy: { data: 'desc' },
+      take: 100
+    });
+    res.json(logs);
+  } catch(e) {
+    res.status(500).json({ error: 'Erro ao buscar logs' });
+  }
+});
+
 module.exports = router;

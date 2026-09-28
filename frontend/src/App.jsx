@@ -8,6 +8,7 @@ import Documentos from './pages/Documentos';
 import SetoresUsuarios from './pages/SetoresUsuarios';
 import Login from './pages/Login';
 import Configuracoes from './pages/Configuracoes';
+import Logs from './pages/Logs';
 import Relatorios from './pages/Relatorios';
 
 import Dashboards from './pages/Dashboards';

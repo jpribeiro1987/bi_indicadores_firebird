@@ -7,31 +7,44 @@ const prisma = new PrismaClient();
 // --- BI SYNC JOB ---
 let currentBiSyncTasks = [];
 
-async function syncBiData() {
+async function syncBiData(tipo = 'AUTOMATICO') {
   console.log('[BI Sync] Iniciando sincronização do BI com o Firebird...');
+  let sucesso = true;
+  let detalhes = '';
+  
   try {
     const conexao = await prisma.conexaoBanco.findFirst();
-    if (!conexao) return console.log('[BI Sync] Sem conexão para sincronizar BI.');
-    
-    const indicadores = await prisma.indicador.findMany({ where: { ativo: true } });
-    
-    for (const ind of indicadores) {
-      try {
-        const result = await executeWithCache(conexao, ind.query_sql, 1);
-        await prisma.cacheIndicador.upsert({
-          where: { indicadorId: ind.id },
-          update: { dados_json: JSON.stringify(result), atualizado_em: new Date() },
-          create: { indicadorId: ind.id, dados_json: JSON.stringify(result) }
-        });
-        console.log('[BI Sync] Indicador ' + ind.id + ' atualizado no cache local.');
-      } catch (err) {
-        console.error('[BI Sync] Falha ao atualizar indicador ' + ind.id + ':', err.message);
+    if (!conexao) {
+       detalhes = 'Sem conexão configurada';
+       sucesso = false;
+    } else {
+      const indicadores = await prisma.indicador.findMany({ where: { ativo: true } });
+      let falhas = 0;
+      for (const ind of indicadores) {
+        try {
+          const result = await executeWithCache(conexao, ind.query_sql, 1);
+          await prisma.cacheIndicador.upsert({
+            where: { indicadorId: ind.id },
+            update: { dados_json: JSON.stringify(result), atualizado_em: new Date() },
+            create: { indicadorId: ind.id, dados_json: JSON.stringify(result) }
+          });
+        } catch (err) {
+          falhas++;
+        }
       }
+      detalhes = falhas > 0 ? falhas + ' indicadores falharam' : 'Todos atualizados com sucesso';
+      sucesso = falhas === 0;
     }
-    console.log('[BI Sync] Sincronização do BI concluída.');
   } catch (err) {
-    console.error('[BI Sync] Erro geral na sincronização do BI:', err);
+    sucesso = false;
+    detalhes = err.message;
   }
+  
+  try {
+    await prisma.logSincronizacao.create({
+      data: { tipo, sucesso, detalhes: detalhes.substring(0, 250) }
+    });
+  } catch(e) {}
 }
 
 async function scheduleBiSyncJob(scheduleString = '') {
