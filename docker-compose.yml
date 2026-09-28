@@ -1,6 +1,11 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+
   backend:
     build: 
       context: ./backend
@@ -9,10 +14,13 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:./dev.db
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend/prisma:/app/prisma
       - ./backend/uploads:/app/uploads
       - ./backups:/app/backups
+    depends_on:
+      - redis
 
   frontend:
     build: 
@@ -21,3 +29,6 @@ services:
       - "8089:80"
     depends_on:
       - backend
+
+volumes:
+  redis_data:
