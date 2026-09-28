@@ -47,7 +47,7 @@ const Configuracoes = () => {
 
   const handleBackup = async () => {
     try {
-      window.location.href = 'http://localhost:3000/api/backup/download';
+      window.location.href = '/api/backup';
     } catch (err) {
       alert('Erro ao gerar backup');
     }
