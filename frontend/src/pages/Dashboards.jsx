@@ -162,7 +162,18 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       return val;
     };
 
-    const xAxisData = data.map(item => {
+    
+      let markLine = undefined;
+      if (indicador.metas && indicador.metas.length > 0 && indicador.metas[0].valor_alvo) {
+        markLine = {
+          data: [{ yAxis: parseFloat(indicador.metas[0].valor_alvo), name: 'Meta' }],
+          lineStyle: { color: 'red', type: 'dashed', width: 2 },
+          markLine,
+          label: { show: true, position: 'end', formatter: 'Meta: {c}' }
+        };
+      }
+
+      const xAxisData = data.map(item => {
       let val = getVal(item, config.coluna_x);
       // Extrair apenas o YYYY-MM-DD se for string ISO datetime para ficar legível
       if (typeof val === 'string' && val.includes('T') && val.endsWith('Z')) {
