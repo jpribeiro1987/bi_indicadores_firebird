@@ -166,9 +166,8 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       let markLine = undefined;
       if (indicador.metas && indicador.metas.length > 0 && indicador.metas[0].valor_alvo) {
         markLine = {
-          data: [{ yAxis: parseFloat(indicador.metas[0].valor_alvo), name: 'Meta' }],
+          data: [{ yAxis: parseFloat(String(indicador.metas[0].valor_alvo).replace(',', '.')), name: 'Meta' }],
           lineStyle: { color: 'red', type: 'dashed', width: 2 },
-          markLine,
           label: { show: true, position: 'end', formatter: 'Meta: {c}' }
         };
       }
@@ -233,6 +232,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         itemStyle: { color: '#00cbb4', borderRadius: config.tipo_grafico === 'BAR' ? [4, 4, 0, 0] : 0 },
         smooth: true,
         symbolSize: config.tipo_grafico === 'SCATTER' ? 12 : 6,
+          markLine: markLine,
         label: {
           show: true,
           position: 'top',
