@@ -116,7 +116,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     const customLayout = dash.layouts?.find(l => l.setorId === parsedSectorId);
     
     if (customLayout) {
-      newLayout = JSON.parse(customLayout.layout_json).map(l => ({ ...l, minW: 3, minH: 6 }));
+      newLayout = JSON.parse(customLayout.layout_json).map(l => ({
+        i: l.indicadorId ? l.indicadorId.toString() : (l.i ? l.i.toString() : ''),
+        x: l.pos_x !== undefined ? l.pos_x : l.x,
+        y: l.pos_y !== undefined ? l.pos_y : l.y,
+        w: l.largura !== undefined ? l.largura : l.w,
+        h: l.altura !== undefined ? l.altura : l.h,
+        minW: 3, minH: 6 
+      }));
     } else {
       newLayout = dash.indicadores.map(di => ({
         i: di.indicadorId.toString(),
