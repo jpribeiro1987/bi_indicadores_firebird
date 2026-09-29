@@ -116,7 +116,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     const customLayout = dash.layouts?.find(l => l.setorId === parsedSectorId);
     
     if (customLayout) {
-      newLayout = JSON.parse(customLayout.layout_json);
+      newLayout = JSON.parse(customLayout.layout_json).map(l => ({ ...l, minW: 3, minH: 6 }));
     } else {
       newLayout = dash.indicadores.map(di => ({
         i: di.indicadorId.toString(),
@@ -124,6 +124,8 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         y: di.pos_y,
         w: di.largura,
         h: di.altura,
+        minW: 3,
+        minH: 6,
       }));
     }
     setLayout(newLayout);
@@ -330,7 +332,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       </div>
 
       {activeDash && layout.length > 0 && (
-        <ResponsiveGridLayoutWithWidth layouts={{ lg: layout, md: layout, sm: layout }}
+        <ResponsiveGridLayoutWithWidth layouts={{ lg: layout }}
           className="layout"
           
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
@@ -348,7 +350,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             
             return (
 
-              <div key={ind.id.toString()} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div key={ind.id.toString()} data-grid={layout.find(l => l.i === ind.id.toString()) || { x: 0, y: 0, w: 6, h: 12, minW: 3, minH: 6 }} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-main)' }}>{ind.nome}</h4>
                 
                 <div style={{ flex: 1, position: 'relative' }}>
