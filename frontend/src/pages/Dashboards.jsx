@@ -106,17 +106,26 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     }
   };
 
-  const selectDashboard = async (dash) => {
+  const selectDashboard = async (dash, sector = null) => {
     setActiveDash(dash);
+    const targetSector = sector || selectedSectorId;
     
-    // Parse layout from db
-    const newLayout = dash.indicadores.map(di => ({
-      i: di.indicadorId.toString(),
-      x: di.pos_x,
-      y: di.pos_y,
-      w: di.largura,
-      h: di.altura,
-    }));
+    // Find layout for this sector
+    let newLayout = [];
+    const parsedSectorId = targetSector === 'ALL' ? null : parseInt(targetSector);
+    const customLayout = dash.layouts?.find(l => l.setorId === parsedSectorId);
+    
+    if (customLayout) {
+      newLayout = JSON.parse(customLayout.layout_json);
+    } else {
+      newLayout = dash.indicadores.map(di => ({
+        i: di.indicadorId.toString(),
+        x: di.pos_x,
+        y: di.pos_y,
+        w: di.largura,
+        h: di.altura,
+      }));
+    }
     setLayout(newLayout);
 
     // Fetch data for each indicator
