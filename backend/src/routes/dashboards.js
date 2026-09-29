@@ -11,12 +11,10 @@ router.get('/', async (req, res) => {
         indicadores: {
           where: { indicador: { ativo: true } },
           include: { indicador: true }
-          },
-          layouts: true
-        }
+        },
+        layouts: true
       }
     });
-
     res.json(dashboards);
   } catch (error) {
     console.error(error);
