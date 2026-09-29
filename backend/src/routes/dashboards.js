@@ -11,6 +11,8 @@ router.get('/', async (req, res) => {
         indicadores: {
           where: { indicador: { ativo: true } },
           include: { indicador: true }
+          },
+          layouts: true
         }
       }
     });
@@ -38,23 +40,25 @@ router.post('/sync', async (req, res) => {
 router.put('/:id/layout', async (req, res) => {
   try {
     const { id } = req.params;
-    const { layout } = req.body;
+    const { layout, setorId } = req.body;
 
-    for (const item of layout) {
-      await prisma.dashboardIndicador.update({
-        where: {
-          dashboardId_indicadorId: {
-            dashboardId: parseInt(id),
-            indicadorId: parseInt(item.indicadorId)
-          }
-        },
-        data: {
-          pos_x: item.pos_x,
-          pos_y: item.pos_y,
-          largura: item.largura,
-          altura: item.altura
-        }
-      });
+    const parsedSetorId = setorId === 'ALL' || !setorId ? null : parseInt(setorId);
+
+    
+    if (parsedSetorId === null) {
+      const existing = await prisma.dashboardLayout.findFirst({ where: { dashboardId: parseInt(id), setorId: null } });
+      if (existing) {
+        await prisma.dashboardLayout.update({ where: { id: existing.id }, data: { layout_json: JSON.stringify(layout) } });
+      } else {
+        await prisma.dashboardLayout.create({ data: { dashboardId: parseInt(id), setorId: null, layout_json: JSON.stringify(layout) } });
+      }
+    } else {
+      const existing = await prisma.dashboardLayout.findFirst({ where: { dashboardId: parseInt(id), setorId: parsedSetorId } });
+      if (existing) {
+        await prisma.dashboardLayout.update({ where: { id: existing.id }, data: { layout_json: JSON.stringify(layout) } });
+      } else {
+        await prisma.dashboardLayout.create({ data: { dashboardId: parseInt(id), setorId: parsedSetorId, layout_json: JSON.stringify(layout) } });
+      }
     }
 
     res.json({ success: true });

@@ -142,7 +142,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         largura: l.w,
         altura: l.h
       }));
-      await axios.put(`/api/dashboards/${activeDash.id}/layout`, { layout: payload });
+      await axios.put(`/api/dashboards/${activeDash.id}/layout`, { layout: payload, setorId: selectedSectorId });
       alert('Layout salvo com sucesso!');
     } catch (err) {
       alert('Erro ao salvar layout');

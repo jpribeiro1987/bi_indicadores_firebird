@@ -18,6 +18,7 @@ model Setor {
   documentos Documento[]
   usuarios   Usuario[]   @relation("UsuarioSetor")
   dashboards Dashboard[] @relation("DashboardSetor")
+  layouts DashboardLayout[]
   indicadores Indicador[] @relation("IndicadorSetor")
 }
 
@@ -234,6 +235,7 @@ model Dashboard {
   nome        String
   setores     Setor[]              @relation("DashboardSetor")
   indicadores DashboardIndicador[]
+  layouts     DashboardLayout[]
 }
 
 model DashboardIndicador {
@@ -255,4 +257,16 @@ model LogSincronizacao {
   tipo      String   // AUTOMATICO, MANUAL
   sucesso   Boolean
   detalhes  String?
+}
+
+model DashboardLayout {
+  id          Int       @id @default(autoincrement())
+  dashboardId Int
+  setorId     Int?      
+  layout_json String    
+  
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  setor       Setor?    @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  
+  @@unique([dashboardId, setorId])
 }
