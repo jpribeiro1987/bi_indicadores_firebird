@@ -19,7 +19,7 @@ async function syncBiData(tipo = 'AUTOMATICO') {
        sucesso = false;
     } else {
       const indicadores = await prisma.indicador.findMany({ where: { ativo: true } });
-      let falhas = 0;
+      let falhos = [];
       for (const ind of indicadores) {
         try {
           const result = await executeWithCache(conexao, ind.query_sql, 1);
@@ -29,11 +29,11 @@ async function syncBiData(tipo = 'AUTOMATICO') {
             create: { indicadorId: ind.id, dados_json: JSON.stringify(result) }
           });
         } catch (err) {
-          falhas++;
+          falhos.push(ind.nome);
         }
       }
-      detalhes = falhas > 0 ? falhas + ' indicadores falharam' : 'Todos atualizados com sucesso';
-      sucesso = falhas === 0;
+      detalhes = falhos.length > 0 ? falhos.length + ' indicadores falharam: ' + falhos.join(', ') : 'Todos atualizados com sucesso';
+      sucesso = falhos.length === 0;
     }
   } catch (err) {
     sucesso = false;
@@ -42,7 +42,7 @@ async function syncBiData(tipo = 'AUTOMATICO') {
   
   try {
     await prisma.logSincronizacao.create({
-      data: { tipo, sucesso, detalhes: detalhes.substring(0, 250) }
+      data: { tipo, sucesso, detalhes: detalhes.substring(0, 2000) }
     });
   } catch(e) {}
 }
