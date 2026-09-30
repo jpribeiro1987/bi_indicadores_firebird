@@ -51,6 +51,14 @@ const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme 
               <Settings size={20} />
               <span>Configurações</span>
             </div>
+
+            <div 
+              className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`}
+              onClick={() => setActiveTab('logs')}
+            >
+              <Activity size={20} />
+              <span>Logs do Sistema</span>
+            </div>
           </>
         )}
 
