@@ -53,7 +53,7 @@ async function scheduleBiSyncJob(scheduleString = '') {
 
   if (!scheduleString) return;
 
-  const times = scheduleString.split(',').map(t => t.trim()).filter(t => t);
+  const times = scheduleString.split(/[,;]/).map(t => t.trim()).filter(t => t);
   
   for (const timeString of times) {
     const [hour, minute] = timeString.split(':');
