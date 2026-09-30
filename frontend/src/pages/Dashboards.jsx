@@ -96,7 +96,6 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         setLastUpdate(new Date(sucessos[0].data).toLocaleString('pt-BR'));
       }
     } catch(e) {}
-fetchDashboards = async () => {
     try {
       const res = await axios.get('/api/dashboards');
             const dbs = res.data.map(d => ({
