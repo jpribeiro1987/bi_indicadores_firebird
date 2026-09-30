@@ -70,6 +70,7 @@ function App() {
         {activeTab === 'itts' && <Itts userRole={userRole} userSector={userSector} />}
         {activeTab === 'documentos' && <Documentos userRole={userRole} userSector={userSector} />}
         {activeTab === 'setores' && <SetoresUsuarios />}
+        {activeTab === 'logs' && <Logs />}
         {activeTab === 'relatorios' && <Relatorios userRole={userRole} userSector={userSector} />}
         
       </main>
