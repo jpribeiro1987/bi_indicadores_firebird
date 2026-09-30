@@ -14,6 +14,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
   const [layout, setLayout] = useState([]);
   const [selectedSectorId, setSelectedSectorId] = useState('ALL');
   const [availableSectors, setAvailableSectors] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   const getDefaultStartDate = () => {
     const d = new Date();
@@ -88,6 +89,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
   }, [userRole, userSectors, selectedSectorId]);
 
   const fetchDashboards = async () => {
+    try {
+      const logsRes = await axios.get('/api/config/logs');
+      const sucessos = logsRes.data.filter(l => l.status === 'SUCESSO');
+      if (sucessos.length > 0) {
+        setLastUpdate(new Date(sucessos[0].data).toLocaleString('pt-BR'));
+      }
+    } catch(e) {}
+fetchDashboards = async () => {
     try {
       const res = await axios.get('/api/dashboards');
             const dbs = res.data.map(d => ({
@@ -304,7 +313,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             ))}
           </select>
           
-          <button onClick={handleSync} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '8px 16px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          
+            {lastUpdate && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', marginRight: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                <span>Última atualização:</span>
+                <strong style={{ color: 'var(--text-main)' }}>{lastUpdate}</strong>
+              </div>
+            )}
+            <button onClick={handleSync} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '8px 16px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             Atualizar Agora
           </button>
           <button onClick={() => window.print()} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '8px 16px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
