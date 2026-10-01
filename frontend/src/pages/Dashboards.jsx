@@ -101,7 +101,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             const dbs = res.data.map(d => ({
         ...d,
         indicadores: d.indicadores.filter(di => 
-          (userRole === 'ADMIN' || !di.indicador.setorId || userSectors.includes(di.indicador.setorId))
+          (userRole === 'ADMIN' || userRole === 'LEITURA' || !di.indicador.setorId || userSectors.includes(di.indicador.setorId))
           && (selectedSectorId === 'ALL' || di.indicador.setorId === parseInt(selectedSectorId) || !di.indicador.setorId)
         )
       }));
@@ -307,7 +307,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
           >
             <option value='ALL'>Todos os Meus Setores</option>
-            {availableSectors.filter(s => userRole === 'ADMIN' || userSectors.includes(s.id)).map(s => (
+            {availableSectors.filter(s => userRole === 'ADMIN' || userRole === 'LEITURA' || userSectors.includes(s.id)).map(s => (
               <option key={s.id} value={s.id}>{s.nome}</option>
             ))}
           </select>
@@ -326,9 +326,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             🖨️ Imprimir
           </button>
           
-          <button onClick={saveLayout} style={{ background: 'var(--primary)', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {userRole !== 'LEITURA' && <button onClick={saveLayout} style={{ background: 'var(--primary)', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Save size={16}/> Salvar Posições
-          </button>
+          </button>}
         </div>
       </div>
 
