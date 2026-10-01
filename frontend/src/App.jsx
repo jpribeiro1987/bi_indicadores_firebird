@@ -9,6 +9,7 @@ import SetoresUsuarios from './pages/SetoresUsuarios';
 import Login from './pages/Login';
 import Configuracoes from './pages/Configuracoes';
 import Logs from './pages/Logs';
+import Manual from './pages/Manual';
 import Relatorios from './pages/Relatorios';
 
 import Dashboards from './pages/Dashboards';
@@ -71,6 +72,7 @@ function App() {
         {activeTab === 'documentos' && <Documentos userRole={userRole} userSector={userSector} />}
         {activeTab === 'setores' && <SetoresUsuarios />}
         {activeTab === 'logs' && <Logs />}
+        {activeTab === 'manual' && <Manual />}
         {activeTab === 'relatorios' && <Relatorios userRole={userRole} userSector={userSector} />}
         
       </main>
