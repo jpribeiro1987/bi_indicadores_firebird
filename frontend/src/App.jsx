@@ -19,7 +19,8 @@ import './index.css';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboards');
   const [user, setUser] = useState(null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'theme-dark');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'theme-light');
+  const [loginTheme, setLoginTheme] = useState('theme-dark');
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -45,8 +46,8 @@ function App() {
 
   if (!user) {
     return (
-      <div className={`app-container ${theme}`}>
-        <Login onLoginSuccess={handleLoginSuccess} theme={theme} setTheme={setTheme} />
+      <div className={`app-container ${loginTheme}`}>
+        <Login onLoginSuccess={handleLoginSuccess} theme={loginTheme} setTheme={setLoginTheme} />
       </div>
     );
   }
