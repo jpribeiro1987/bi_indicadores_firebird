@@ -25,6 +25,7 @@ const dashboardsRoutes = require('./routes/dashboards');
 const conexoesRoutes = require('./routes/conexoes');
 const categoriasRoutes = require('./routes/categorias');
 const unidadesRoutes = require('./routes/unidades');
+const frequenciasRoutes = require('./routes/frequencias');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/setores', sectorsRoutes);
@@ -40,6 +41,7 @@ app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/conexoes', conexoesRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/unidades', unidadesRoutes);
+app.use('/api/frequencias', frequenciasRoutes);
 
 // Simple healthcheck
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

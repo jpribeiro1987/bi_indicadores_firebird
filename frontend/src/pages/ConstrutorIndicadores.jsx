@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database } from 'lucide-react';
 import ModalGerenciarCategorias from '../components/ModalGerenciarCategorias';
 import ModalUnidadeMedida from '../components/ModalUnidadeMedida';
+import ModalFrequenciaApuracao from '../components/ModalFrequenciaApuracao';
 import ModalConexaoBI from '../components/ModalConexaoBI';
 
 export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
@@ -10,6 +11,8 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [isUnidadeModalOpen, setIsUnidadeModalOpen] = useState(false);
+  const [isFreqModalOpen, setIsFreqModalOpen] = useState(false);
+  const [frequenciasCadastradas, setFrequenciasCadastradas] = useState([]);
   const [unidadesCadastradas, setUnidadesCadastradas] = useState([]);
   const [showBIModal, setShowBIModal] = useState(false);
   const [activeTab, setActiveTab] = useState('performance');
@@ -38,6 +41,13 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     fetchCategoriasList();
     fetchUnidadesList();
   }, [userRole, userSectors]);
+
+  const fetchFrequenciasList = async () => {
+    try {
+      const res = await axios.get('/api/frequencias');
+      setFrequenciasCadastradas(res.data);
+    } catch (e) {}
+  };
 
   const fetchUnidadesList = async () => {
     try {
@@ -312,12 +322,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Frequência de Apuração</label>
-                  <select name="frequencia" value={formData.frequencia} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                    <option value="">Select...</option>
-                    <option value="Diário">Diário</option>
-                    <option value="Mensal">Mensal</option>
-                  </select>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', margin: 0 }}>Frequência de Apuração</label>
+                      <button type="button" onClick={() => setIsFreqModalOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>
+                        + Gerenciar
+                      </button>
+                    </div>
+                    <select name="frequencia" value={formData.frequencia} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      <option value="">Selecione...</option>
+                      {frequenciasCadastradas.map(f => <option key={f.id} value={f.nome}>{f.nome}</option>)}
+                    </select>
                 </div>
               </div>
 
