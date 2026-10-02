@@ -9,6 +9,8 @@ import 'react-resizable/css/styles.css';
 
 export default function Dashboards({ userRole, userSectors = [] }) {
   const [dashboards, setDashboards] = useState([]);
+  const [unmetTargets, setUnmetTargets] = useState([]);
+  const [showUnmetModal, setShowUnmetModal] = useState(false);
   const [activeDash, setActiveDash] = useState(null);
   const [indicatorData, setIndicatorData] = useState({});
   const [layout, setLayout] = useState([]);
@@ -278,6 +280,56 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     };
   };
 
+
+  useEffect(() => {
+    if (!activeDash || !indicatorData || Object.keys(indicatorData).length === 0) return;
+    
+    const unmet = [];
+    const getValInline = (item, colName) => {
+      if (!colName || !item) return undefined;
+      const key = Object.keys(item).find(k => k.toLowerCase() === colName.toLowerCase());
+      return key ? item[key] : undefined;
+    };
+
+    for (const di of activeDash.indicadores) {
+      const ind = di.indicador;
+      const res = indicatorData[di.indicadorId];
+      if (res && res.data && ind.metas && ind.metas.length > 0 && ind.metas[0].valor_alvo !== null) {
+        const config = res.config;
+        const seriesData = filterByDate(res.data, config.coluna_x, startDate, endDate);
+        if (seriesData && seriesData.length > 0) {
+          const lastItem = seriesData[seriesData.length - 1];
+          let val = getValInline(lastItem, config.coluna_y);
+          if (typeof val === 'string') val = parseFloat(val.replace(',', '.'));
+          
+          const metaStr = String(ind.metas[0].valor_alvo).replace(',', '.');
+          const target = parseFloat(metaStr);
+          
+          let isUnmet = false;
+          if (ind.orientacao === 'Maior Melhor' && val < target) isUnmet = true;
+          if (ind.orientacao === 'Menor Melhor' && val > target) isUnmet = true;
+          
+          if (isUnmet) {
+            unmet.push({
+              nome: ind.nome,
+              valor_atual: val,
+              meta: target,
+              orientacao: ind.orientacao,
+              unidade: ind.unidade_medida || ''
+            });
+          }
+        }
+      }
+    }
+    
+    if (unmet.length > 0) {
+      setUnmetTargets(unmet);
+      setShowUnmetModal(true);
+    } else {
+      setUnmetTargets([]);
+      setShowUnmetModal(false);
+    }
+  }, [activeDash, indicatorData, startDate, endDate]);
 
   const handleSync = async () => {
     try {

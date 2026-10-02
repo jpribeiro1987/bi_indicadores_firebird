@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
       include: {
         indicadores: {
           where: { indicador: { ativo: true } },
-          include: { indicador: true }
+          include: { indicador: { include: { metas: true } } }
         },
         layouts: true
       }
