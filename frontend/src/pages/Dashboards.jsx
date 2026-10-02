@@ -354,6 +354,11 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       </div>
 
       {activeDash && layout.length > 0 && (
+        
+        <>
+        <div className="print-only">
+          Painel de Indicadores - {selectedSectorId === 'ALL' ? 'Todos os Setores' : (availableSectors.find(s => s.id === parseInt(selectedSectorId))?.nome || 'Setor')}
+        </div>
         <ResponsiveGridLayoutWithWidth layouts={{ lg: layout }}
           className="layout"
           
@@ -426,7 +431,8 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             );
           })}
         </ResponsiveGridLayoutWithWidth>
-      )}
+          </>
+        )}
       
       {!activeDash && dashboards.length > 0 && (
          <div style={{ color: 'var(--text-muted)' }}>Selecione um dashboard acima.</div>

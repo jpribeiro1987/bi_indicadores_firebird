@@ -222,7 +222,7 @@ h1, h2, h3 { margin: 0; }
     display: block !important;
   }
   @page {
-    size: A4;
+    size: A4 landscape;
     margin: 15mm;
   }
   body { 
@@ -271,3 +271,19 @@ h1, h2, h3 { margin: 0; }
     object-fit: contain !important;
   }
 }
+
+  .print-only {
+    display: none;
+  }
+  @media print {
+    .print-only {
+      display: block !important;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: black;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 10px;
+    }
+  }
