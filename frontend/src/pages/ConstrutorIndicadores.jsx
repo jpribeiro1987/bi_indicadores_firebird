@@ -216,6 +216,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
         </div>
       </div>
       {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
+      {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
       {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
     </>
     );
@@ -478,6 +479,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
       </div>
     </div>
     {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
+      {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
     {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
   </>);
 }
