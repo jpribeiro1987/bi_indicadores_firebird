@@ -40,6 +40,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     fetchSetores();
     fetchCategoriasList();
     fetchUnidadesList();
+    fetchFrequenciasList();
   }, [userRole, userSectors]);
 
   const fetchFrequenciasList = async () => {
