@@ -221,7 +221,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       const pieData = data.map(item => ({ name: getVal(item, config.coluna_x), value: getVal(item, config.coluna_y) }));
       const isDonut = config.tipo_grafico === 'DONUT';
       return {
-        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        tooltip: { trigger: 'item', formatter: '{b}: {c}' + (config.unidade_medida ? ' ' + config.unidade_medida : '') + ' ({d}%)' },
         legend: { orient: 'horizontal', bottom: 0 },
         series: [{ 
           type: 'pie', 
@@ -272,7 +272,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
           position: 'top',
           color: '#333',
           fontWeight: 'bold',
-          formatter: (params) => formatValue(params.value)
+          formatter: (params) => formatValue(params.value) + (config.unidade_medida ? ' ' + config.unidade_medida : '')
         }
       }]
     };
@@ -384,7 +384,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                   {res ? (
                     ind.tipo_grafico === 'CARD' ? (
                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-                         {filteredData && filteredData[0] ? filteredData[0][ind.coluna_y] : '0'}
+                         {filteredData && filteredData[0] ? (formatValue(filteredData[0][ind.coluna_y]) + (ind.unidade_medida ? ' ' + ind.unidade_medida : '')) : '0'}
                        </div>
                     ) : ind.tipo_grafico === 'TABLE' ? (
                       <div style={{ height: '100%', overflow: 'auto', border: '1px solid var(--border)', borderRadius: '4px' }}>
