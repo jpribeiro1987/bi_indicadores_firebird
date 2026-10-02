@@ -215,6 +215,12 @@ h1, h2, h3 { margin: 0; }
 
 
 @media print {
+  .app-container, .main-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
   @page {
     size: A4;
     margin: 15mm;
