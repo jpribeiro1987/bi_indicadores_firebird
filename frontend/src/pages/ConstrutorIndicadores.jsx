@@ -227,6 +227,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
       </div>
       {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
       {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
+      {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
       {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
     </>
     );
@@ -481,6 +482,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     </div>
     {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
       {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
+      {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
     {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
   </>);
 }
