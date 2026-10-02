@@ -23,6 +23,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
+  const uniqueUnits = [...new Set(['%', 'R$', 'Qtd', 'h', 'dias', ...indicadores.map(i => i.unidade_medida).filter(Boolean)])];
   const [testResult, setTestResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -280,12 +281,10 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Unidade de Medida</label>
-                  <select name="unidade_medida" value={formData.unidade_medida} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                    <option value="">Select...</option>
-                    <option value="%">%</option>
-                    <option value="Qtd">Quantidade</option>
-                    <option value="R$">Financeiro (R$)</option>
-                  </select>
+                  <input list="units-list" name="unidade_medida" value={formData.unidade_medida || ''} onChange={handleChange} placeholder="Selecione ou digite..." style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  <datalist id="units-list">
+                    {uniqueUnits.map((u, i) => <option key={i} value={u} />)}
+                  </datalist>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Orientação</label>
