@@ -270,3 +270,10 @@ model DashboardLayout {
   
   @@unique([dashboardId, setorId])
 }
+
+model UnidadeMedida {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  simbolo   String   @unique
+  criado_em DateTime @default(now())
+}

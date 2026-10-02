@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database } from 'lucide-react';
 import ModalGerenciarCategorias from '../components/ModalGerenciarCategorias';
+import ModalUnidadeMedida from '../components/ModalUnidadeMedida';
 import ModalConexaoBI from '../components/ModalConexaoBI';
 
 export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   const [indicadores, setIndicadores] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
+  const [isUnidadeModalOpen, setIsUnidadeModalOpen] = useState(false);
+  const [unidadesCadastradas, setUnidadesCadastradas] = useState([]);
   const [showBIModal, setShowBIModal] = useState(false);
   const [activeTab, setActiveTab] = useState('performance');
   const [conexoes, setConexoes] = useState([]);
@@ -33,7 +36,15 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     fetchConexoes();
     fetchSetores();
     fetchCategoriasList();
+    fetchUnidadesList();
   }, [userRole, userSectors]);
+
+  const fetchUnidadesList = async () => {
+    try {
+      const res = await axios.get('/api/unidades');
+      setUnidadesCadastradas(res.data);
+    } catch (e) {}
+  };
 
   const fetchCategoriasList = async () => {
     try {
@@ -280,11 +291,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Unidade de Medida</label>
-                  <input list="units-list" name="unidade_medida" value={formData.unidade_medida || ''} onChange={handleChange} placeholder="Selecione ou digite..." style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  <datalist id="units-list">
-                    {uniqueUnits.map((u, i) => <option key={i} value={u} />)}
-                  </datalist>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', margin: 0 }}>Unidade de Medida</label>
+                    <button type="button" onClick={() => setIsUnidadeModalOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}>
+                      + Gerenciar Unidades
+                    </button>
+                  </div>
+                  <select name="unidade_medida" value={formData.unidade_medida || ''} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                    <option value="">Selecione...</option>
+                    {unidadesCadastradas.map(u => <option key={u.id} value={u.simbolo}>{u.nome} ({u.simbolo})</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Orientação</label>
