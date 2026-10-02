@@ -19,7 +19,7 @@ import './index.css';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboards');
   const [user, setUser] = useState(null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'theme-light');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'theme-dark');
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
