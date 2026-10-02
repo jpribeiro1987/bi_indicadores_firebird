@@ -39,7 +39,7 @@ const Login = ({ onLoginSuccess, theme, setTheme }) => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'linear-gradient(rgba(0, 10, 20, 0.7), rgba(0, 10, 20, 0.8)), url(/background_login.jpg) center/cover no-repeat', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'linear-gradient(rgba(0, 10, 20, 0.7), rgba(0, 10, 20, 0.8)), url(/background_login2.jpg) center/cover no-repeat', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
       <button 
         onClick={toggleTheme}
         style={{
@@ -54,7 +54,7 @@ const Login = ({ onLoginSuccess, theme, setTheme }) => {
         <span>{theme === 'theme-light' ? 'Tema Escuro' : 'Tema Claro'}</span>
       </button>
 
-      <div className="glass-card" style={{ maxWidth: '400px', width: '100%', padding: '40px', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
+      <div className="glass-card" style={{ background: theme === 'theme-light' ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.4)', maxWidth: '400px', width: '100%', padding: '40px', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
         
         <div style={{ textAlign: 'center', width: '100%' }}>
           <img src="/logo.png" alt="Logo Instituição" style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain', marginBottom: '16px' }} 
