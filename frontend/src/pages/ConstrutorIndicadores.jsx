@@ -8,6 +8,7 @@ import ModalConexaoBI from '../components/ModalConexaoBI';
 
 export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   const [indicadores, setIndicadores] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [isUnidadeModalOpen, setIsUnidadeModalOpen] = useState(false);
@@ -176,7 +177,14 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   if (!isFormOpen) {
-    return (<><div style={{ padding: '24px' }}>
+    const filteredIndicadores = indicadores.filter(ind => 
+      ind.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (ind.codigo && ind.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (ind.categoria && ind.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+  return (
+    <><div style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
             <h2 style={{ margin: 0, color: 'var(--text-main)' }}>Construtor de BI</h2>
@@ -195,7 +203,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
             </button>
           </div>
         </div>
-        <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              placeholder="Pesquisar por nome, código ou categoria..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              style={{ padding: '10px 16px', border: '1px solid #ccc', borderRadius: '4px', width: '300px' }}
+            />
+          </div>
+          <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
@@ -207,7 +224,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               </tr>
             </thead>
             <tbody>
-              {indicadores.map(ind => (
+              {filteredIndicadores.map(ind => (
                 <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
                   <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
@@ -219,7 +236,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                   </td>
                 </tr>
               ))}
-              {indicadores.length === 0 && (
+              {filteredIndicadores.length === 0 && (
                 <tr><td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
               )}
             </tbody>

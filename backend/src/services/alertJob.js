@@ -44,7 +44,13 @@ async function syncBiData(tipo = 'AUTOMATICO') {
     await prisma.logSincronizacao.create({
       data: { tipo, sucesso, detalhes: detalhes.substring(0, 2000) }
     });
-  } catch(e) {}
+  
+      const dataLimite = new Date();
+      dataLimite.setDate(dataLimite.getDate() - 15);
+      await prisma.logSincronizacao.deleteMany({
+        where: { data: { lt: dataLimite } }
+      });
+    } catch(e) {}
 }
 
 async function scheduleBiSyncJob(scheduleString = '') {
