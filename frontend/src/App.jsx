@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Configuracoes from './pages/Configuracoes';
 import Logs from './pages/Logs';
 import Manual from './pages/Manual';
+import Atualizacoes from './pages/Atualizacoes';
 import Relatorios from './pages/Relatorios';
 
 import Dashboards from './pages/Dashboards';
@@ -74,6 +75,7 @@ function App() {
         {activeTab === 'setores' && <SetoresUsuarios />}
         {activeTab === 'logs' && <Logs />}
         {activeTab === 'manual' && <Manual />}
+        {activeTab === 'atualizacoes' && userRole === 'ADMIN' && <Atualizacoes />}
         {activeTab === 'relatorios' && <Relatorios userRole={userRole} userSector={userSector} />}
         
       </main>

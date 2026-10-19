@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, Activity, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, Activity, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail, Sparkles } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme }) => {
   const toggleTheme = () => {
@@ -59,14 +59,23 @@ const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme 
               <Activity size={20} />
               <span>Logs do Sistema</span>
             </div>
-                      <div 
+
+            <div 
               className={`nav-item ${activeTab === 'manual' ? 'active' : ''}`}
               onClick={() => setActiveTab('manual')}
             >
               <FileText size={20} />
               <span>Manual do Sistema</span>
             </div>
-            </>
+
+            <div 
+              className={`nav-item ${activeTab === 'atualizacoes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('atualizacoes')}
+            >
+              <Sparkles size={20} />
+              <span>Atualizações</span>
+            </div>
+          </>
         )}
 
       </nav>
