@@ -379,8 +379,11 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   const handleSync = async () => {
     try {
-      await axios.post('/api/dashboards/sync');
-      alert('Sincronização iniciada com sucesso! O processo roda em background. Atualize a tela em alguns instantes.');
+      await axios.post('/api/dashboards/sync', { setorId: selectedSectorId });
+      const sectorName = selectedSectorId === 'ALL'
+        ? 'todos os setores'
+        : (availableSectors.find(s => s.id === parseInt(selectedSectorId))?.nome || 'setor selecionado');
+      alert(`Sincronização iniciada com sucesso (${sectorName})! O processo roda em background. Atualize a tela em alguns instantes.`);
     } catch (err) {
       alert('Erro ao disparar sincronização');
     }

@@ -22,11 +22,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Forçar sincronização imediata do BI
+// Forçar sincronização imediata do BI (opcionalmente filtrando pelo setor selecionado)
 router.post('/sync', async (req, res) => {
   try {
+    const { setorId } = req.body || {};
     // Roda a rotina de sync em background (não aguarda para não dar timeout caso seja longo)
-    syncBiData('MANUAL');
+    syncBiData('MANUAL', setorId);
     res.json({ success: true, message: 'Sincronização iniciada com sucesso!' });
   } catch (error) {
     console.error(error);

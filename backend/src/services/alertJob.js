@@ -7,8 +7,9 @@ const prisma = new PrismaClient();
 // --- BI SYNC JOB ---
 let currentBiSyncTasks = [];
 
-async function syncBiData(tipo = 'AUTOMATICO') {
-  console.log('[BI Sync] Iniciando sincronização do BI com o Firebird...');
+async function syncBiData(tipo = 'AUTOMATICO', setorId = null) {
+  const parsedSetorId = setorId && setorId !== 'ALL' ? parseInt(setorId, 10) : null;
+  console.log(`[BI Sync] Iniciando sincronização do BI com o Firebird... (Setor: ${parsedSetorId || 'TODOS'})`);
   let sucesso = true;
   let detalhes = '';
   
@@ -18,7 +19,17 @@ async function syncBiData(tipo = 'AUTOMATICO') {
        detalhes = 'Sem conexão configurada';
        sucesso = false;
     } else {
-      const indicadores = await prisma.indicador.findMany({ where: { ativo: true } });
+      const whereClause = { ativo: true };
+      let prefixoSetor = '';
+      if (parsedSetorId && !isNaN(parsedSetorId)) {
+        whereClause.setorId = parsedSetorId;
+        const setorObj = await prisma.setor.findUnique({ where: { id: parsedSetorId } });
+        if (setorObj) {
+          prefixoSetor = `[Setor: ${setorObj.nome}] `;
+        }
+      }
+
+      const indicadores = await prisma.indicador.findMany({ where: whereClause });
       let falhos = [];
       for (const ind of indicadores) {
         try {
@@ -32,7 +43,7 @@ async function syncBiData(tipo = 'AUTOMATICO') {
           falhos.push(ind.nome);
         }
       }
-      detalhes = falhos.length > 0 ? falhos.length + ' indicadores falharam: ' + falhos.join(', ') : 'Todos atualizados com sucesso';
+      detalhes = prefixoSetor + (falhos.length > 0 ? falhos.length + ' indicadores falharam: ' + falhos.join(', ') : `Todos atualizados com sucesso (${indicadores.length} indicadores)`);
       sucesso = falhos.length === 0;
     }
   } catch (err) {
@@ -45,12 +56,12 @@ async function syncBiData(tipo = 'AUTOMATICO') {
       data: { tipo, sucesso, detalhes: detalhes.substring(0, 2000) }
     });
   
-      const dataLimite = new Date();
-      dataLimite.setDate(dataLimite.getDate() - 15);
-      await prisma.logSincronizacao.deleteMany({
-        where: { data: { lt: dataLimite } }
-      });
-    } catch(e) {}
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 15);
+    await prisma.logSincronizacao.deleteMany({
+      where: { data: { lt: dataLimite } }
+    });
+  } catch(e) {}
 }
 
 async function scheduleBiSyncJob(scheduleString = '') {
