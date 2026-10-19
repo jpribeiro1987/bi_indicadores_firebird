@@ -3,7 +3,8 @@ import axios from 'axios';
 import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
-import { Save } from 'lucide-react';
+import { Save, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -385,6 +386,40 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     }
   };
 
+  const exportIndicatorXls = (ind, rows) => {
+    if (!rows || rows.length === 0) {
+      alert('Não há dados disponíveis para exportar no período selecionado.');
+      return;
+    }
+
+    const formattedRows = rows.map(row => {
+      const cleanRow = {};
+      Object.entries(row).forEach(([key, val]) => {
+        const header = key.toUpperCase();
+        if (typeof val === 'string' && val.includes('T') && val.endsWith('Z')) {
+          cleanRow[header] = val.substring(0, 10).split('-').reverse().join('/');
+        } else {
+          cleanRow[header] = val;
+        }
+      });
+      return cleanRow;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedRows);
+    const workbook = XLSX.utils.book_new();
+    const sheetName = (ind.codigo ? `Ind_${ind.codigo}` : ind.nome || 'Indicador').replace(/[\\/?*\[\]:]/g, '').substring(0, 31);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'Dados');
+
+    const safeFileName = (ind.nome || 'indicador')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_')
+      .substring(0, 60);
+
+    XLSX.writeFile(workbook, `${safeFileName}.xls`, { bookType: 'biff8' });
+  };
+
   return (
     <div style={{ padding: '24px' }}>
             
@@ -475,7 +510,37 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             return (
 
               <div key={ind.id.toString()} data-grid={layout.find(l => l.i === ind.id.toString()) || { x: 0, y: 0, w: 6, h: 12, minW: 3, minH: 6 }} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-main)' }}>{ind.nome}</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                  <h4 style={{ margin: 0, color: 'var(--text-main)', flex: 1 }}>{ind.nome}</h4>
+                  {res && (
+                    <button
+                      type="button"
+                      className="no-print"
+                      title="Baixar dados do indicador em XLS"
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportIndicatorXls(ind, filteredData || res.data);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: 'var(--bg-main)',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Download size={13} /> XLS
+                    </button>
+                  )}
+                </div>
                 
                 <div style={{ flex: 1, position: 'relative' }}>
                   {res ? (
