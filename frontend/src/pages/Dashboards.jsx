@@ -30,44 +30,89 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   const filterByDate = (dataArray, colX, start, end) => {
     if (!start && !end) return dataArray;
-    if (!dataArray || !Array.isArray(dataArray)) return dataArray;
+    if (!dataArray || !Array.isArray(dataArray) || dataArray.length === 0) return dataArray;
     
     // helper to find key ignoring case
     const getVal = (item, colName) => {
-      if (!colName) return undefined;
+      if (!colName || !item) return undefined;
       const key = Object.keys(item).find(k => k.toLowerCase() === colName.toLowerCase());
       return key ? item[key] : undefined;
     };
 
+    // Detect date column if colX is not provided (e.g. for TABLE charts)
+    const detectDateValue = (row) => {
+      let val = getVal(row, colX);
+      if (val !== undefined && val !== null && val !== '') return val;
+
+      const keys = Object.keys(row);
+      const priorityNames = ['mes_ano', 'data', 'dt', 'competencia', 'periodo', 'data_evolucao', 'data_hora_evolucao'];
+      for (const pName of priorityNames) {
+        const matchKey = keys.find(k => k.toLowerCase() === pName || k.toLowerCase().includes(pName));
+        if (matchKey && row[matchKey] !== undefined && row[matchKey] !== null && row[matchKey] !== '') {
+          return row[matchKey];
+        }
+      }
+
+      // Fallback: check if any value in the row looks like a date or MM/YYYY
+      for (const k of keys) {
+        const v = row[k];
+        if (v instanceof Date) return v;
+        if (typeof v === 'string') {
+          const s = v.trim();
+          if (/^\d{1,2}\/\d{4}$/.test(s) || /^\d{1,2}\/\d{1,2}\/\d{4}/.test(s) || /^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) {
+            return s;
+          }
+        }
+      }
+      return undefined;
+    };
+
     return dataArray.filter(row => {
-      let rawDate = getVal(row, colX);
+      let rawDate = detectDateValue(row);
       if (!rawDate) return true;
       
-      let parsed = null;
       if (typeof rawDate === 'string') {
-        if (rawDate.includes('/')) {
-          let parts = rawDate.split('/');
-          if (parts.length === 2) parsed = new Date(`${parts[1]}-${parts[0]}-01T00:00:00`);
-          if (parts.length === 3) parsed = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
-        } else {
-          parsed = new Date(rawDate);
+        const str = rawDate.trim();
+        // Format MM/YYYY (e.g., "10/2026")
+        if (/^\d{1,2}\/\d{4}$/.test(str)) {
+          const [mm, yyyy] = str.split('/');
+          const ym = `${yyyy}-${mm.padStart(2, '0')}`;
+          if (start && ym < start.substring(0, 7)) return false;
+          if (end && ym > end.substring(0, 7)) return false;
+          return true;
         }
-      } else if (rawDate instanceof Date) {
-        parsed = rawDate;
+        // Format YYYY/MM or YYYY-MM
+        if (/^\d{4}[\/\-]\d{1,2}$/.test(str)) {
+          const [yyyy, mm] = str.split(/[\/\-]/);
+          const ym = `${yyyy}-${mm.padStart(2, '0')}`;
+          if (start && ym < start.substring(0, 7)) return false;
+          if (end && ym > end.substring(0, 7)) return false;
+          return true;
+        }
+        // Format DD/MM/YYYY or DD.MM.YYYY
+        if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}/.test(str)) {
+          const parts = str.substring(0, 10).split(/[\/\.]/);
+          const ymd = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          if (start && ymd < start) return false;
+          if (end && ymd > end) return false;
+          return true;
+        }
+        // Format YYYY-MM-DD or ISO String (YYYY-MM-DDTHH:mm:ss...)
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+          const ymd = str.substring(0, 10);
+          if (start && ymd < start) return false;
+          if (end && ymd > end) return false;
+          return true;
+        }
       }
-      
+
+      let parsed = rawDate instanceof Date ? rawDate : new Date(rawDate);
       if (!parsed || isNaN(parsed.getTime())) return true;
       
-      let isAfterStart = true;
-      let isBeforeEnd = true;
-      
-      if (start) {
-         isAfterStart = parsed >= new Date(start + 'T00:00:00');
-      }
-      if (end) {
-         isBeforeEnd = parsed <= new Date(end + 'T23:59:59');
-      }
-      return isAfterStart && isBeforeEnd;
+      const ymd = parsed.toISOString().substring(0, 10);
+      if (start && ymd < start) return false;
+      if (end && ymd > end) return false;
+      return true;
     });
   };
 
@@ -443,23 +488,29 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                           <thead style={{ position: 'sticky', top: 0, background: 'var(--panel-bg)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
                             <tr>
-                              {filteredData && filteredData.length > 0 && Object.keys(filteredData[0]).map((k, i) => (
+                              {((filteredData && filteredData[0]) || (res.data && res.data[0])) && Object.keys((filteredData && filteredData[0]) || res.data[0]).map((k, i) => (
                                 <th key={i} style={{ padding: '8px', textAlign: 'left', color: 'var(--text-main)' }}>{k.toUpperCase()}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredData && filteredData.map((row, rIdx) => (
+                            {filteredData && filteredData.length > 0 ? filteredData.map((row, rIdx) => (
                               <tr key={rIdx} style={{ borderBottom: '1px solid var(--border)' }}>
                                 {Object.values(row).map((val, cIdx) => (
                                   <td key={cIdx} style={{ padding: '8px', color: 'var(--text-main)' }}>
                                     {typeof val === 'number' ? val.toLocaleString('pt-BR') : 
                                      (typeof val === 'string' && val.includes('T') && val.endsWith('Z')) ? val.substring(0, 10).split('-').reverse().join('/') : 
-                                     String(val)}
+                                     String(val ?? '')}
                                   </td>
                                 ))}
                               </tr>
-                            ))}
+                            )) : (
+                              <tr>
+                                <td colSpan={res.data && res.data[0] ? Object.keys(res.data[0]).length : 1} style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                  Nenhum registro encontrado no período selecionado.
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
