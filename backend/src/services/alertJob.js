@@ -60,12 +60,14 @@ async function syncBiData(tipo = 'AUTOMATICO', setorId = null) {
         const ind = indicadores[i];
         syncProgress.current = i + 1;
         syncProgress.currentIndicator = ind.nome;
+        const indStartMs = Date.now();
         try {
           const result = await executeWithCache(conexao, ind.query_sql, 1);
+          const indDurationMs = Date.now() - indStartMs;
           await prisma.cacheIndicador.upsert({
             where: { indicadorId: ind.id },
-            update: { dados_json: JSON.stringify(result), atualizado_em: new Date() },
-            create: { indicadorId: ind.id, dados_json: JSON.stringify(result) }
+            update: { dados_json: JSON.stringify(result), duracao_ms: indDurationMs, atualizado_em: new Date() },
+            create: { indicadorId: ind.id, dados_json: JSON.stringify(result), duracao_ms: indDurationMs }
           });
         } catch (err) {
           falhos.push(ind.nome);
@@ -206,6 +208,84 @@ async function sendUnmetTargetsSummaryEmail(setorId = null) {
   };
 }
 
+async function sendPendingActionPlansEmail(setorId = null) {
+  const parsedSetorId = setorId && setorId !== 'ALL' ? parseInt(setorId, 10) : null;
+  const planos = await prisma.planoAcaoIndicador.findMany({
+    where: { status: { not: 'CONCLUIDO' } },
+    include: { indicador: { include: { setor: true } } },
+    orderBy: { criado_em: 'desc' }
+  });
+
+  const filtered = parsedSetorId
+    ? planos.filter(p => p.indicador && p.indicador.setorId === parsedSetorId)
+    : planos;
+
+  if (filtered.length === 0) {
+    return { sent: false, count: 0, message: 'Não há planos de ação pendentes ou em andamento para notificar!' };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const usuarios = await prisma.usuario.findMany({ include: { setores: true } });
+  const recipients = new Set();
+  for (const u of usuarios) {
+    if (!u.email) continue;
+    if (u.perfil === 'ADMIN') {
+      recipients.add(u.email);
+    } else if (u.setores && u.setores.some(s => filtered.some(p => p.indicador && p.indicador.setorId === s.id))) {
+      recipients.add(u.email);
+    }
+  }
+
+  if (recipients.size === 0) {
+    return { sent: false, count: filtered.length, message: 'Nenhum destinatário de e-mail cadastrado.' };
+  }
+
+  const rowsHtml = filtered.map(p => {
+    const vencido = p.prazo && p.prazo < today;
+    return `
+      <tr>
+        <td style="padding:8px;border:1px solid #ddd;">${p.indicador?.setor?.nome || 'Geral'}</td>
+        <td style="padding:8px;border:1px solid #ddd;"><strong>${p.indicador?.nome || '-'}</strong> (${p.competencia || 'Geral'})</td>
+        <td style="padding:8px;border:1px solid #ddd;">${p.plano_acao}</td>
+        <td style="padding:8px;border:1px solid #ddd;">${p.responsavel || '-'}</td>
+        <td style="padding:8px;border:1px solid #ddd;color:${vencido ? '#dc2626' : '#333'};font-weight:${vencido ? 'bold' : 'normal'};">
+          ${p.prazo ? p.prazo.split('-').reverse().join('/') : '-'} ${vencido ? '(VENCIDO)' : ''}
+        </td>
+        <td style="padding:8px;border:1px solid #ddd;">${p.status}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#333;">
+      <h2 style="color:#d97706;">📋 Acompanhamento de Planos de Ação Pendentes (SGQ)</h2>
+      <p>Existem <strong>${filtered.length}</strong> Plano(s) de Ação pendentes ou em andamento aguardando conclusão:</p>
+      <table style="border-collapse:collapse;width:100%;max-width:850px;font-size:13px;">
+        <thead>
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Setor</th>
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Indicador</th>
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Plano de Ação</th>
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Responsável</th>
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Prazo</th>
+            <th style="padding:8px;border:1px solid #ddd;text-align:left;">Status</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <p style="margin-top:16px;font-size:12px;color:#64748b;">Acesse a aba "Planos de Ação (SGQ)" no Sistema de Indicadores Hospitalar para atualizar o andamento.</p>
+    </div>
+  `;
+
+  const emailTo = Array.from(recipients).join(', ');
+  const ok = await sendEmail(emailTo, 'Cobrança de Planos de Ação Pendentes (SGQ) - Sistema de Indicadores', html);
+  return {
+    sent: Boolean(ok),
+    count: filtered.length,
+    message: ok ? `Notificação enviada com sucesso para ${recipients.size} destinatário(s) (${filtered.length} planos)!` : 'Falha ao enviar e-mail. Verifique as configurações SMTP.'
+  };
+}
+
 async function scheduleBiSyncJob(scheduleString = '') {
   currentBiSyncTasks.forEach(task => task.stop());
   currentBiSyncTasks = [];
@@ -237,4 +317,4 @@ async function initJobs() {
   }
 }
 
-module.exports = { syncBiData, getSyncProgress, sendUnmetTargetsSummaryEmail, scheduleBiSyncJob, initJobs };
+module.exports = { syncBiData, getSyncProgress, sendUnmetTargetsSummaryEmail, sendPendingActionPlansEmail, scheduleBiSyncJob, initJobs };

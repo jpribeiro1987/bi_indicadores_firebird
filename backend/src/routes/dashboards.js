@@ -13,8 +13,10 @@ router.get('/', async (req, res) => {
           include: {
             indicador: {
               include: {
+                setor: true,
                 metas: true,
-                planosAcao: { orderBy: { criado_em: 'desc' } }
+                planosAcao: { orderBy: { criado_em: 'desc' } },
+                cache: { select: { atualizado_em: true, duracao_ms: true } }
               }
             }
           }

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
-import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2 } from 'lucide-react';
+import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2, Star, Trophy } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -32,6 +32,33 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   // Expanded Indicator (Zoom / Full-screen chart/table)
   const [expandedIndicador, setExpandedIndicador] = useState(null);
+
+  // Drill-down on chart point click
+  const [drillDownData, setDrillDownData] = useState(null);
+
+  // Interactive Farol status filter ('ALL' | 'GREEN' | 'YELLOW' | 'RED' | 'FAV')
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Favorite indicators persisted in localStorage
+  const [favoriteIds, setFavoriteIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bi_fav_indicadores');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Temporary chart type override per indicator card
+  const [chartTypeOverrides, setChartTypeOverrides] = useState({});
+
+  const toggleFavorite = (indId) => {
+    setFavoriteIds(prev => {
+      const next = prev.includes(indId) ? prev.filter(id => id !== indId) : [...prev, indId];
+      try { localStorage.setItem('bi_fav_indicadores', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
 
   // Plano de Ação Modal
   const [planoIndicador, setPlanoIndicador] = useState(null);
@@ -114,11 +141,17 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     const target = parseFloat(String(metaObj.valor_alvo).replace(',', '.'));
     if (typeof val !== 'number' || isNaN(val) || isNaN(target)) return defaultColor;
 
+    const tol = ind.tolerancia !== null && ind.tolerancia !== undefined ? parseFloat(ind.tolerancia) : 5;
+
     if (ind.orientacao === 'Maior Melhor') {
-      return val >= target ? '#10b981' : '#ef4444';
+      if (val >= target) return '#10b981';
+      if (tol > 0 && val >= target * (1 - tol / 100)) return '#f59e0b';
+      return '#ef4444';
     }
     if (ind.orientacao === 'Menor Melhor') {
-      return val <= target ? '#10b981' : '#ef4444';
+      if (val <= target) return '#10b981';
+      if (tol > 0 && val <= target * (1 + tol / 100)) return '#f59e0b';
+      return '#ef4444';
     }
     return defaultColor;
   };
@@ -357,10 +390,11 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     setLayout(newLayout);
   };
 
-  const getOption = (indicador, result, filteredData) => {
+  const getOption = (indicador, result, filteredData, overrideType = null) => {
     if (!result || !result.data) return {};
     
-    const config = result.config;
+    const effectiveType = overrideType || chartTypeOverrides[indicador.id] || result.config?.tipo_grafico || indicador.tipo_grafico || 'BAR';
+    const config = { ...result.config, tipo_grafico: effectiveType };
     const data = filteredData || result.data;
     const activeMeta = getActiveMeta(indicador);
 
@@ -545,9 +579,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
   };
 
   // --- PLANO DE AÇÃO HANDLERS ---
-  const openPlanoModal = async (ind, valorAtual = '', metaVal = '') => {
+  const openPlanoModal = async (ind, valorAtual = '', metaVal = '', competenciaOverride = '') => {
     setPlanoIndicador(ind);
-    const defaultComp = endDate ? `${endDate.substring(5, 7)}/${endDate.substring(0, 4)}` : '';
+    const defaultComp = competenciaOverride || (endDate ? `${endDate.substring(5, 7)}/${endDate.substring(0, 4)}` : '');
     const activeMeta = getActiveMeta(ind);
     setNovoPlano({
       competencia: defaultComp,
@@ -565,6 +599,22 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     } catch (e) {
       setPlanosList(ind.planosAcao || []);
     }
+  };
+
+  const handleChartPointClick = (ind, params) => {
+    if (!params) return;
+    const rawVal = typeof params.value === 'object' && params.value !== null ? params.value.value : params.value;
+    const numVal = typeof rawVal === 'string' ? parseFloat(rawVal.replace(',', '.')) : rawVal;
+    const activeMeta = getActiveMeta(ind);
+    const targetVal = activeMeta && activeMeta.valor_alvo !== null ? parseFloat(String(activeMeta.valor_alvo).replace(',', '.')) : null;
+    const semColor = evaluateTargetColor(ind, numVal, '#00cbb4');
+    setDrillDownData({
+      indicador: ind,
+      periodo: String(params.name || ''),
+      valor: numVal,
+      meta: targetVal,
+      cor: semColor
+    });
   };
 
   const salvarPlanoAcao = async () => {
@@ -833,19 +883,30 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
       {activeDash && layout.length > 0 && (
         <>
-        {/* Farol Geral de Desempenho do Setor (Scorecard) */}
+        {/* Farol Geral de Desempenho do Setor (Scorecard Clicável + 3 Cores) */}
         {(() => {
           let dentroMeta = 0;
+          let atencaoMeta = 0;
           let foraMeta = 0;
           let semMeta = 0;
           let somaPesos = 0;
           let somaPesosAtingidos = 0;
+          const bySectorMap = {};
 
           for (const di of activeDash.indicadores) {
             const ind = di.indicador;
             const res = indicatorData[ind.id];
             const activeMeta = getActiveMeta(ind);
             const peso = ind.peso && ind.peso > 0 ? ind.peso : 1;
+            const secId = ind.setorId || 'GERAL';
+            const secNome = ind.setor?.nome || (availableSectors.find(s => s.id === ind.setorId)?.nome) || 'Geral';
+
+            if (!bySectorMap[secId]) {
+              bySectorMap[secId] = { id: secId, nome: secNome, green: 0, yellow: 0, red: 0, pesos: 0, atingidos: 0, planosPendentes: 0 };
+            }
+            if (Array.isArray(ind.planosAcao)) {
+              bySectorMap[secId].planosPendentes += ind.planosAcao.filter(p => p.status !== 'CONCLUIDO').length;
+            }
 
             if (!activeMeta || activeMeta.valor_alvo === null || activeMeta.valor_alvo === undefined || !ind.orientacao) {
               semMeta++;
@@ -862,35 +923,122 @@ export default function Dashboards({ userRole, userSectors = [] }) {
               dentroMeta++;
               somaPesos += peso;
               somaPesosAtingidos += peso;
+              bySectorMap[secId].green++;
+              bySectorMap[secId].pesos += peso;
+              bySectorMap[secId].atingidos += peso;
+            } else if (color === '#f59e0b') {
+              atencaoMeta++;
+              somaPesos += peso;
+              somaPesosAtingidos += peso * 0.5;
+              bySectorMap[secId].yellow++;
+              bySectorMap[secId].pesos += peso;
+              bySectorMap[secId].atingidos += peso * 0.5;
             } else if (color === '#ef4444') {
               foraMeta++;
               somaPesos += peso;
+              bySectorMap[secId].red++;
+              bySectorMap[secId].pesos += peso;
             } else {
               semMeta++;
             }
           }
 
           const pctAtingimento = somaPesos > 0 ? Math.round((somaPesosAtingidos / somaPesos) * 100) : null;
+          const totalFavs = activeDash.indicadores.filter(di => favoriteIds.includes(di.indicador.id)).length;
+          const sectorRanking = Object.values(bySectorMap)
+            .map(s => ({ ...s, pct: s.pesos > 0 ? Math.round((s.atingidos / s.pesos) * 100) : null }))
+            .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
 
           return (
-            <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid #10b98140', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🟢 Dentro da Meta</span>
-                <strong style={{ fontSize: '1.3rem', color: '#10b981' }}>{dentroMeta}</strong>
+            <>
+              <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                <div
+                  onClick={() => setStatusFilter(statusFilter === 'GREEN' ? 'ALL' : 'GREEN')}
+                  title="Clique para filtrar apenas indicadores Dentro da Meta"
+                  style={{ background: statusFilter === 'GREEN' ? '#10b98118' : 'var(--panel-bg)', padding: '12px 14px', borderRadius: '8px', border: statusFilter === 'GREEN' ? '2px solid #10b981' : '1px solid #10b98140', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🟢 Na Meta</span>
+                  <strong style={{ fontSize: '1.25rem', color: '#10b981' }}>{dentroMeta}</strong>
+                </div>
+                <div
+                  onClick={() => setStatusFilter(statusFilter === 'YELLOW' ? 'ALL' : 'YELLOW')}
+                  title="Clique para filtrar indicadores em Atenção (dentro da faixa de tolerância)"
+                  style={{ background: statusFilter === 'YELLOW' ? '#f59e0b18' : 'var(--panel-bg)', padding: '12px 14px', borderRadius: '8px', border: statusFilter === 'YELLOW' ? '2px solid #f59e0b' : '1px solid #f59e0b40', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🟡 Atenção</span>
+                  <strong style={{ fontSize: '1.25rem', color: '#f59e0b' }}>{atencaoMeta}</strong>
+                </div>
+                <div
+                  onClick={() => setStatusFilter(statusFilter === 'RED' ? 'ALL' : 'RED')}
+                  title="Clique para filtrar apenas indicadores Críticos / Fora da Meta"
+                  style={{ background: statusFilter === 'RED' ? '#ef444418' : 'var(--panel-bg)', padding: '12px 14px', borderRadius: '8px', border: statusFilter === 'RED' ? '2px solid #ef4444' : '1px solid #ef444440', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🔴 Crítico</span>
+                  <strong style={{ fontSize: '1.25rem', color: '#ef4444' }}>{foraMeta}</strong>
+                </div>
+                <div
+                  onClick={() => setStatusFilter(statusFilter === 'FAV' ? 'ALL' : 'FAV')}
+                  title="Clique para filtrar seus indicadores Favoritos (⭐)"
+                  style={{ background: statusFilter === 'FAV' ? '#eab30818' : 'var(--panel-bg)', padding: '12px 14px', borderRadius: '8px', border: statusFilter === 'FAV' ? '2px solid #eab308' : '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>⭐ Favoritos</span>
+                  <strong style={{ fontSize: '1.25rem', color: '#eab308' }}>{totalFavs}</strong>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('ALL')}
+                  title="Mostrar todos os indicadores"
+                  style={{ background: 'var(--panel-bg)', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>🎯 Atingimento</span>
+                  <strong style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>{pctAtingimento !== null ? `${pctAtingimento}%` : '-'}</strong>
+                </div>
               </div>
-              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid #ef444440', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🔴 Fora da Meta</span>
-                <strong style={{ fontSize: '1.3rem', color: '#ef4444' }}>{foraMeta}</strong>
-              </div>
-              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>⚪ Sem Meta</span>
-                <strong style={{ fontSize: '1.3rem', color: 'var(--text-main)' }}>{semMeta}</strong>
-              </div>
-              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🎯 Atingimento Ponderado</span>
-                <strong style={{ fontSize: '1.3rem', color: 'var(--primary)' }}>{pctAtingimento !== null ? `${pctAtingimento}%` : '-'}</strong>
-              </div>
-            </div>
+
+              {/* Ranking Comparativo entre Setores (Visão Diretoria quando 'ALL' está selecionado) */}
+              {selectedSectorId === 'ALL' && sectorRanking.length > 1 && (
+                <details className="no-print" open style={{ background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Trophy size={16} color="#f59e0b" /> Ranking Comparativo de Desempenho por Setor (Clique em um setor para filtrar)
+                  </summary>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px', marginTop: '12px' }}>
+                    {sectorRanking.map((sec, idx) => (
+                      <div
+                        key={sec.id}
+                        onClick={() => sec.id !== 'GERAL' && setSelectedSectorId(String(sec.id))}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-main)',
+                          cursor: sec.id !== 'GERAL' ? 'pointer' : 'default',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>#{idx + 1} {sec.nome}</strong>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            padding: '2px 7px',
+                            borderRadius: '12px',
+                            background: sec.pct === null ? '#e2e8f0' : sec.pct >= 80 ? '#dcfce7' : sec.pct >= 50 ? '#fef3c7' : '#fee2e2',
+                            color: sec.pct === null ? '#475569' : sec.pct >= 80 ? '#15803d' : sec.pct >= 50 ? '#b45309' : '#b91c1c'
+                          }}>
+                            {sec.pct !== null ? `${sec.pct}%` : 'S/ Meta'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span>🟢 {sec.green} | 🟡 {sec.yellow} | 🔴 {sec.red}</span>
+                          {sec.planosPendentes > 0 && <span style={{ color: '#d97706', fontWeight: 700 }}>📋 {sec.planosPendentes} pend.</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
           );
         })()}
 
@@ -906,22 +1054,46 @@ export default function Dashboards({ userRole, userSectors = [] }) {
           containerPadding={[0, 0]}
           onLayoutChange={onLayoutChange}
         >
-          {activeDash.indicadores.map(di => {
+          {[...activeDash.indicadores]
+            .sort((a, b) => {
+              const favA = favoriteIds.includes(a.indicador.id) ? 0 : 1;
+              const favB = favoriteIds.includes(b.indicador.id) ? 0 : 1;
+              if (favA !== favB) return favA - favB;
+              return (a.indicador.ordem || 0) - (b.indicador.ordem || 0);
+            })
+            .filter(di => {
+              if (statusFilter === 'ALL') return true;
+              const ind = di.indicador;
+              if (statusFilter === 'FAV') return favoriteIds.includes(ind.id);
+              const res = indicatorData[ind.id];
+              if (!res || !res.data) return false;
+              const series = filterByDate(res.data, ind.coluna_x, startDate, endDate);
+              if (!series || series.length === 0) return false;
+              const rawVal = getVal(series[series.length - 1], ind.coluna_y);
+              const c = evaluateTargetColor(ind, rawVal, 'neutral');
+              if (statusFilter === 'GREEN') return c === '#10b981';
+              if (statusFilter === 'YELLOW') return c === '#f59e0b';
+              if (statusFilter === 'RED') return c === '#ef4444';
+              return true;
+            })
+            .map(di => {
             const ind = di.indicador;
             const res = indicatorData[ind.id];
             const filteredData = res ? filterByDate(res.data, ind.coluna_x, startDate, endDate) : null;
             const activeMeta = getActiveMeta(ind);
+            const effectiveType = chartTypeOverrides[ind.id] || ind.tipo_grafico || 'BAR';
+            const isFav = favoriteIds.includes(ind.id);
 
             // Prepare TABLE sorting/filtering/totals if TABLE
             let tableRows = filteredData || [];
             const searchStr = (tableSearch[ind.id] || '').toLowerCase();
-            if (ind.tipo_grafico === 'TABLE' && searchStr) {
+            if (effectiveType === 'TABLE' && searchStr) {
               tableRows = tableRows.filter(r =>
                 Object.values(r).some(v => String(v ?? '').toLowerCase().includes(searchStr))
               );
             }
             const sortCfg = tableSort[ind.id];
-            if (ind.tipo_grafico === 'TABLE' && sortCfg && sortCfg.col) {
+            if (effectiveType === 'TABLE' && sortCfg && sortCfg.col) {
               tableRows = [...tableRows].sort((a, b) => {
                 const va = a[sortCfg.col];
                 const vb = b[sortCfg.col];
@@ -973,7 +1145,28 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                       {trendBadge}
                     </div>
                   </div>
-                  <div className="no-print" onMouseDown={e => e.stopPropagation()} style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  <div className="no-print" onMouseDown={e => e.stopPropagation()} style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      title={isFav ? 'Remover dos Favoritos' : 'Fixar nos Favoritos'}
+                      onClick={() => toggleFavorite(ind.id)}
+                      style={{ padding: '4px 6px', background: 'var(--bg-main)', color: isFav ? '#eab308' : 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Star size={13} fill={isFav ? '#eab308' : 'none'} />
+                    </button>
+                    <select
+                      title="Alternar formato de visualização em tempo real"
+                      value={effectiveType}
+                      onChange={e => setChartTypeOverrides(prev => ({ ...prev, [ind.id]: e.target.value }))}
+                      style={{ padding: '3px 4px', fontSize: '0.7rem', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      <option value="BAR">Barras</option>
+                      <option value="LINE">Linha</option>
+                      <option value="AREA">Área</option>
+                      <option value="PIE">Pizza</option>
+                      <option value="TABLE">Tabela</option>
+                      <option value="CARD">Card</option>
+                    </select>
                     <button
                       type="button"
                       title="Expandir Gráfico / Tabela em Tela Cheia"
@@ -1021,17 +1214,17 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                 
                 <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   {res ? (
-                    ind.tipo_grafico === 'CARD' ? (
+                    effectiveType === 'CARD' ? (
                       (() => {
-                        const rawCardVal = filteredData && filteredData[0] ? getVal(filteredData[0], ind.coluna_y) : 0;
+                        const rawCardVal = filteredData && filteredData.length > 0 ? getVal(filteredData[filteredData.length - 1], ind.coluna_y) : 0;
                         const semColor = evaluateTargetColor(ind, rawCardVal, 'var(--primary)');
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.5rem', fontWeight: 'bold', color: semColor }}>
-                            {filteredData && filteredData[0] ? (formatValue(rawCardVal) + (ind.unidade_medida ? ' ' + ind.unidade_medida : '')) : '0'}
+                            {filteredData && filteredData.length > 0 ? (formatValue(rawCardVal) + (ind.unidade_medida ? ' ' + ind.unidade_medida : '')) : '0'}
                           </div>
                         );
                       })()
-                    ) : ind.tipo_grafico === 'TABLE' ? (
+                    ) : effectiveType === 'TABLE' ? (
                       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                         <div className="no-print" onMouseDown={e => e.stopPropagation()} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-main)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                           <Search size={14} color="var(--text-muted)" />
@@ -1115,9 +1308,12 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                       </div>
                     ) : (
                       <ReactECharts 
-                        option={getOption(ind, res, filteredData)} 
+                        option={getOption(ind, res, filteredData, effectiveType)} 
                         style={{ height: '100%', width: '100%' }}
                         opts={{ renderer: 'svg' }}
+                        onEvents={{
+                          click: (params) => handleChartPointClick(ind, params)
+                        }}
                       />
                     )
                   ) : (
@@ -1346,6 +1542,70 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                   />
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Inspeção / Drill-Down ao Clicar em um Ponto ou Barra do Gráfico */}
+      {drillDownData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.68)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: '#fff', color: '#0f172a', padding: '24px', borderRadius: '12px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 45px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '1.15rem' }}>🔎 Inspeção do Período: {drillDownData.periodo}</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.88rem', color: '#475569' }}>
+              Indicador: <strong>{drillDownData.indicador.nome}</strong>
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Valor Apurado</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: drillDownData.cor }}>
+                  {typeof drillDownData.valor === 'number' ? drillDownData.valor.toLocaleString('pt-BR') : drillDownData.valor} {drillDownData.indicador.unidade_medida || ''}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Meta Estipulada</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#334155' }}>
+                  {drillDownData.meta !== null && !isNaN(drillDownData.meta) ? `${drillDownData.meta.toLocaleString('pt-BR')} ${drillDownData.indicador.unidade_medida || ''}` : 'Sem meta'}
+                </div>
+              </div>
+              {drillDownData.meta !== null && !isNaN(drillDownData.meta) && typeof drillDownData.valor === 'number' && drillDownData.meta !== 0 && (
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e2e8f0', paddingTop: '8px', fontSize: '0.84rem' }}>
+                  <strong>Desvio em relação à meta:</strong>{' '}
+                  {(((drillDownData.valor - drillDownData.meta) / Math.abs(drillDownData.meta)) * 100).toFixed(1)}%
+                  {' '}({drillDownData.cor === '#10b981' ? '🟢 Dentro da Meta' : drillDownData.cor === '#f59e0b' ? '🟡 Em Atenção (Tolerância)' : '🔴 Fora da Meta'})
+                </div>
+              )}
+            </div>
+
+            {Array.isArray(drillDownData.indicador.planosAcao) && drillDownData.indicador.planosAcao.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>Planos de Ação deste Indicador:</div>
+                <div style={{ maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {drillDownData.indicador.planosAcao.slice(0, 4).map(p => (
+                    <div key={p.id} style={{ fontSize: '0.78rem', background: '#f1f5f9', padding: '8px', borderRadius: '6px' }}>
+                      <strong>[{p.competencia || 'Geral'} - {p.status}]</strong> {p.plano_acao} (Resp: {p.responsavel || '-'})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+              {userRole !== 'LEITURA' && (
+                <button
+                  onClick={() => {
+                    const d = drillDownData;
+                    setDrillDownData(null);
+                    openPlanoModal(d.indicador, d.valor, d.meta ?? '', d.periodo);
+                  }}
+                  style={{ padding: '8px 14px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '0.84rem' }}
+                >
+                  📋 Registrar Plano neste Período
+                </button>
+              )}
+              <button onClick={() => setDrillDownData(null)} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, marginLeft: 'auto' }}>
+                Fechar
+              </button>
             </div>
           </div>
         </div>

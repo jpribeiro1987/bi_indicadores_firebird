@@ -194,6 +194,9 @@ model Indicador {
   coluna_x       String?    
   coluna_y       String?    
   dias_alerta    Int?       
+  ordem          Int?       @default(0)
+  tolerancia     Float?     @default(5)
+  historico_sql  String?
   
   dashboards     DashboardIndicador[]
   metas          MetaIndicador[]
@@ -206,6 +209,7 @@ model CacheIndicador {
   indicadorId   Int       @unique
   indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
   dados_json    String
+  duracao_ms    Int?
   atualizado_em DateTime  @default(now())
 }
 

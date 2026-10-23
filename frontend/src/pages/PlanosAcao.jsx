@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ClipboardList, Search, Trash2, Download, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { ClipboardList, Search, Trash2, Download, AlertTriangle, CheckCircle2, Clock, Mail, Edit2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function PlanosAcao({ userRole, userSectors = [] }) {
@@ -10,6 +10,8 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
   const [busca, setBusca] = useState('');
   const [filtroSetor, setFiltroSetor] = useState('ALL');
   const [filtroStatus, setFiltroStatus] = useState('ALL');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [editingPlano, setEditingPlano] = useState(null);
 
   const fetchDados = async () => {
     setLoading(true);
@@ -61,6 +63,37 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
       setPlanos(prev => prev.filter(p => p.id !== id));
     } catch (e) {
       alert('Erro ao excluir plano.');
+    }
+  };
+
+  const salvarEdicaoPlano = async () => {
+    if (!editingPlano) return;
+    try {
+      const res = await axios.put(`/api/indicadores/planos-acao/${editingPlano.id}`, {
+        competencia: editingPlano.competencia,
+        justificativa: editingPlano.justificativa,
+        plano_acao: editingPlano.plano_acao,
+        responsavel: editingPlano.responsavel,
+        prazo: editingPlano.prazo,
+        status: editingPlano.status
+      });
+      setPlanos(prev => prev.map(p => p.id === editingPlano.id ? { ...p, ...res.data } : p));
+      setEditingPlano(null);
+    } catch (e) {
+      alert('Erro ao salvar alterações do Plano de Ação.');
+    }
+  };
+
+  const enviarCobrancaEmail = async () => {
+    if (!window.confirm('Deseja enviar por e-mail a relação de Planos de Ação pendentes/em andamento para os responsáveis e gestores?')) return;
+    setSendingEmail(true);
+    try {
+      const res = await axios.post('/api/indicadores/planos-acao/notificar-email', { setorId: filtroSetor });
+      alert(res.data?.message || 'E-mail processado!');
+    } catch (e) {
+      alert('Erro ao disparar notificação por e-mail.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -129,9 +162,16 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
           </div>
         </div>
 
-        <button onClick={exportarXls} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
-          <Download size={16} /> Exportar XLS
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {userRole !== 'LEITURA' && (
+            <button onClick={enviarCobrancaEmail} disabled={sendingEmail} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+              <Mail size={16} /> {sendingEmail ? 'Enviando...' : 'Cobrar Pendentes por E-mail'}
+            </button>
+          )}
+          <button onClick={exportarXls} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+            <Download size={16} /> Exportar XLS
+          </button>
+        </div>
       </div>
 
       {/* Cards de Resumo */}
@@ -250,7 +290,10 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
                       </select>
                     </td>
                     {userRole !== 'LEITURA' && (
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => setEditingPlano({ ...p })} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar Plano de Ação">
+                          <Edit2 size={16} />
+                        </button>
                         <button onClick={() => excluirPlano(p.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir">
                           <Trash2 size={16} />
                         </button>
@@ -263,6 +306,53 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
           </table>
         )}
       </div>
+
+      {/* Modal de Edição Completa do Plano de Ação */}
+      {editingPlano && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.72)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '580px', width: '100%', padding: '24px', boxShadow: '0 20px 45px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#0f172a' }}>Editar Plano de Ação — {editingPlano.indicador?.nome}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Competência</label>
+                  <input value={editingPlano.competencia || ''} onChange={e => setEditingPlano({ ...editingPlano, competencia: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Status</label>
+                  <select value={editingPlano.status} onChange={e => setEditingPlano({ ...editingPlano, status: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                    <option value="PENDENTE">PENDENTE</option>
+                    <option value="EM_ANDAMENTO">EM ANDAMENTO</option>
+                    <option value="CONCLUIDO">CONCLUÍDO</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Análise Crítica / Justificativa</label>
+                <textarea rows={3} value={editingPlano.justificativa || ''} onChange={e => setEditingPlano({ ...editingPlano, justificativa: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Plano de Ação Corretiva</label>
+                <textarea rows={3} value={editingPlano.plano_acao || ''} onChange={e => setEditingPlano({ ...editingPlano, plano_acao: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Responsável</label>
+                  <input value={editingPlano.responsavel || ''} onChange={e => setEditingPlano({ ...editingPlano, responsavel: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Prazo</label>
+                  <input type="date" value={editingPlano.prazo || ''} onChange={e => setEditingPlano({ ...editingPlano, prazo: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button onClick={() => setEditingPlano(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
+                <button onClick={salvarEdicaoPlano} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Salvar Alterações</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,10 +3,48 @@ import { Sparkles, CheckCircle2, Calendar, Tag, Search } from 'lucide-react';
 
 const UPDATES_HISTORY = [
   {
+    versao: 'v2.7.0',
+    data: '23/10/2026',
+    titulo: 'Ranking de Setores, Semáforo 3 Cores (Tolerância), Drill-Down nos Gráficos, Favoritos, Rollback SQL e Cobrança SGQ',
+    destaque: true,
+    itens: [
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Ranking Comparativo entre Setores (Visão Diretoria)',
+        descricao: 'Ao visualizar "Todos os Setores", exibe automaticamente o Ranking Comparativo de Desempenho por Setor com o % de Atingimento Ponderado, contadores 🟢/🟡/🔴 e Planos de Ação pendentes. Clicar em um setor filtra o painel imediatamente.'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Semáforo de 3 Cores com Faixa de Tolerância (🟢 Verde / 🟡 Amarelo / 🔴 Vermelho)',
+        descricao: 'Suporte a margem de tolerância percentual configurável por indicador (padrão 5%), destacando em Amarelo (Atenção) resultados próximos da meta e em Vermelho (Crítico) resultados fora da tolerância.'
+      },
+      {
+        categoria: 'Dashboards',
+        titulo: 'Farol Clicável + Indicadores Favoritos (⭐) + Troca de Gráfico em Tempo Real',
+        descricao: 'Os contadores do Farol Geral agora filtram os cards na tela ao clicar (Na Meta, Atenção, Crítico, Favoritos). Adicionado botão de Estrela (⭐) para fixar KPIs prioritários no topo e seletor rápido no card para alternar entre Barras, Linha, Área, Pizza, Tabela ou Card.'
+      },
+      {
+        categoria: 'Dashboards',
+        titulo: 'Inspeção / Drill-Down ao Clicar em uma Barra ou Ponto do Gráfico',
+        descricao: 'Clicar em qualquer período de um gráfico abre o modal de Inspeção do Período com valor apurado, meta, desvio percentual, histórico de ações e atalho para registrar um Plano de Ação já preenchido com aquela competência.'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Edição Completa de Planos de Ação e Cobrança de Pendentes por E-mail (SGQ)',
+        descricao: 'Na Central de Planos de Ação (SGQ), agora é possível editar todos os campos do plano (Competência, Justificativa, Ação, Responsável, Prazo e Status) e disparar cobrança automática por e-mail dos planos pendentes ou vencidos.'
+      },
+      {
+        categoria: 'Construtor de BI',
+        titulo: 'Histórico de Versões SQL (Rollback em 1 Clique), Ordem (↑/↓) e Monitor de Performance',
+        descricao: 'Guarda automaticamente as últimas 10 versões da Query SQL ao editar um indicador (permitindo restaurar versões anteriores com 1 clique), exibe a velocidade da última sincronização (⚡/🐢 em segundos) e permite reordenar a prioridade dos indicadores (↑/↓).'
+      }
+    ]
+  },
+  {
     versao: 'v2.6.0',
     data: '23/10/2026',
     titulo: 'Central SGQ, Farol Ponderado do Setor, Tendência %, Linha de Média, Zoom em Tela Cheia, Backup JSON e Auditoria',
-    destaque: true,
+    destaque: false,
     itens: [
       {
         categoria: 'Dashboards & Metas',

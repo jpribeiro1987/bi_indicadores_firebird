@@ -2,6 +2,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { executeWithCache } = require('../services/redisService');
 const { prepareQuery } = require('../services/firebirdService');
+const { sendPendingActionPlansEmail } = require('../services/alertJob');
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -124,17 +125,49 @@ router.post('/importar-json', async (req, res) => {
   }
 });
 
+// Notificar por e-mail sobre planos de ação pendentes ou vencidos (SGQ)
+router.post('/planos-acao/notificar-email', async (req, res) => {
+  try {
+    const { setorId } = req.body || {};
+    const result = await sendPendingActionPlansEmail(setorId);
+    await registrarAuditoria(`[SGQ] E-mail de cobrança de Planos de Ação disparado (${result.count || 0} plano(s)).`);
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao enviar notificação: ' + error.message });
+  }
+});
+
 // Listar todos os indicadores
 router.get('/', async (req, res) => {
   try {
     const indicadores = await prisma.indicador.findMany({
-      include: { metas: true, planosAcao: { orderBy: { criado_em: 'desc' } } },
-      orderBy: { id: 'desc' }
+      include: {
+        metas: true,
+        planosAcao: { orderBy: { criado_em: 'desc' } },
+        cache: { select: { atualizado_em: true, duracao_ms: true } }
+      },
+      orderBy: [{ ordem: 'asc' }, { id: 'desc' }]
     });
     res.json(indicadores);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar indicadores' });
+  }
+});
+
+// Alterar rapidamente a ordem de exibição de um indicador
+router.patch('/:id/ordem', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { ordem } = req.body;
+    const atualizado = await prisma.indicador.update({
+      where: { id },
+      data: { ordem: parseInt(ordem) || 0 }
+    });
+    res.json(atualizado);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar ordem do indicador' });
   }
 });
 
@@ -187,6 +220,8 @@ router.post('/', async (req, res) => {
         coluna_x: data.coluna_x,
         coluna_y: data.coluna_y,
         dias_alerta: data.dias_alerta ? parseInt(data.dias_alerta) : null,
+        ordem: data.ordem !== undefined && data.ordem !== '' ? parseInt(data.ordem) : 0,
+        tolerancia: data.tolerancia !== undefined && data.tolerancia !== '' ? parseFloat(String(data.tolerancia).replace(',', '.')) : 5,
         metas: {
           create: metasData
         }
@@ -303,6 +338,19 @@ router.put('/:id', async (req, res) => {
   try {
     const data = req.body;
     const id = parseInt(req.params.id);
+
+    const existing = await prisma.indicador.findUnique({ where: { id } });
+    let historicoList = [];
+    if (existing && existing.historico_sql) {
+      try { historicoList = JSON.parse(existing.historico_sql); } catch (e) {}
+    }
+    if (existing && existing.query_sql && data.query_sql && existing.query_sql.trim() !== data.query_sql.trim()) {
+      historicoList.unshift({
+        data: new Date().toISOString(),
+        sql: existing.query_sql
+      });
+      historicoList = historicoList.slice(0, 10);
+    }
     
     const metasData = Array.isArray(data.metas) ? data.metas.map(m => ({
       descricao: m.descricao || '',
@@ -336,6 +384,9 @@ router.put('/:id', async (req, res) => {
         coluna_x: data.coluna_x,
         coluna_y: data.coluna_y,
         dias_alerta: data.dias_alerta ? parseInt(data.dias_alerta) : null,
+        ordem: data.ordem !== undefined && data.ordem !== '' ? parseInt(data.ordem) : 0,
+        tolerancia: data.tolerancia !== undefined && data.tolerancia !== '' ? parseFloat(String(data.tolerancia).replace(',', '.')) : 5,
+        historico_sql: JSON.stringify(historicoList),
         metas: {
           create: metasData
         }
@@ -398,11 +449,13 @@ router.get('/:id/executar', async (req, res) => {
         : await prisma.conexaoBanco.findFirst();
       if (!conexao) return res.status(404).json({ error: 'Sem conexões cadastradas' });
 
+      const execStartMs = Date.now();
       result = await executeWithCache(conexao, indicador.query_sql, 1, { startDate, endDate });
+      const execDurationMs = Date.now() - execStartMs;
       await prisma.cacheIndicador.upsert({
         where: { indicadorId: indicador.id },
-        update: { dados_json: JSON.stringify(result), atualizado_em: new Date() },
-        create: { indicadorId: indicador.id, dados_json: JSON.stringify(result) }
+        update: { dados_json: JSON.stringify(result), duracao_ms: execDurationMs, atualizado_em: new Date() },
+        create: { indicadorId: indicador.id, dados_json: JSON.stringify(result), duracao_ms: execDurationMs }
       });
     }
 
@@ -462,10 +515,11 @@ router.post('/:id/planos-acao', async (req, res) => {
 router.put('/planos-acao/:planoId', async (req, res) => {
   try {
     const id = parseInt(req.params.planoId);
-    const { status, justificativa, plano_acao, responsavel, prazo } = req.body;
+    const { competencia, status, justificativa, plano_acao, responsavel, prazo } = req.body;
     const atualizado = await prisma.planoAcaoIndicador.update({
       where: { id },
       data: {
+        ...(competencia !== undefined ? { competencia } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(justificativa !== undefined ? { justificativa } : {}),
         ...(plano_acao !== undefined ? { plano_acao } : {}),
@@ -473,6 +527,7 @@ router.put('/planos-acao/:planoId', async (req, res) => {
         ...(prazo !== undefined ? { prazo } : {})
       }
     });
+    await registrarAuditoria(`[SGQ] Plano de Ação ID ${id} atualizado (Status: ${atualizado.status})`);
     res.json(atualizado);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar plano de ação' });

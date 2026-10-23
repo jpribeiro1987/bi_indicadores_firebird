@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database, Copy, Download, Upload } from 'lucide-react';
+import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database, Copy, Download, Upload, ArrowUp, ArrowDown, History } from 'lucide-react';
 import ModalGerenciarCategorias from '../components/ModalGerenciarCategorias';
 import ModalUnidadeMedida from '../components/ModalUnidadeMedida';
 import ModalFrequenciaApuracao from '../components/ModalFrequenciaApuracao';
@@ -24,9 +24,9 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   const initialForm = {
     codigo: '', nome: '', descricao: '', desc_formula: '', fonte_referencia: '',
     categoria: '', subcategoria: '', unidade_medida: '', orientacao: '',
-    frequencia: '', setorId: '', peso: '', ativo: true,
+    frequencia: '', setorId: '', peso: '', ordem: 0, tolerancia: 5, ativo: true,
     tipo_consulta: 'SQL', conexaoId: '', query_sql: '', tipo_grafico: 'BAR',
-    coluna_x: '', coluna_y: '', dias_alerta: '', metas: []
+    coluna_x: '', coluna_y: '', dias_alerta: '', metas: [], historico_sql: null
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -209,6 +209,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     }
   };
 
+  const alterarOrdem = async (ind, delta) => {
+    const novaOrdem = (ind.ordem || 0) + delta;
+    try {
+      await axios.patch(`/api/indicadores/${ind.id}/ordem`, { ordem: novaOrdem });
+      fetchIndicadores();
+    } catch (err) {
+      alert('Erro ao alterar ordem do indicador');
+    }
+  };
+
   const editarIndicador = (ind) => {
     const formattedMetas = (ind.metas || []).map(m => ({
       ...m,
@@ -272,29 +282,58 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <tr>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ordem</th>
                   <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Código</th>
                   <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Nome</th>
                   <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Categoria</th>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Performance SQL</th>
                   <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ativo</th>
                   <th style={{ padding: '16px', textAlign: 'right', color: '#475569' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredIndicadores.map(ind => (
-                  <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
-                    <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
-                    <td style={{ padding: '16px', color: '#334155' }}>{ind.categoria || '-'}</td>
-                    <td style={{ padding: '16px', color: '#334155' }}>{ind.ativo ? 'Sim' : 'Não'}</td>
-                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                      <button onClick={() => duplicarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginRight: '8px' }} title="Duplicar / Clonar Indicador"><Copy size={18}/></button>
-                      <button onClick={() => editarIndicador(ind)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar"><Edit2 size={18}/></button>
-                      <button onClick={() => deletarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir"><Trash2 size={18}/></button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredIndicadores.map(ind => {
+                  const durMs = ind.cache?.duracao_ms;
+                  const durSec = durMs !== undefined && durMs !== null ? (durMs / 1000).toFixed(2) : null;
+                  const isSlow = durMs > 10000;
+                  const isMedium = durMs > 3000 && durMs <= 10000;
+                  return (
+                    <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '16px', color: '#334155' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontWeight: 700, minWidth: '22px' }}>{ind.ordem || 0}</span>
+                          <button onClick={() => alterarOrdem(ind, -1)} title="Subir prioridade (diminuir ordem)" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer' }}><ArrowUp size={12} /></button>
+                          <button onClick={() => alterarOrdem(ind, 1)} title="Descer prioridade (aumentar ordem)" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer' }}><ArrowDown size={12} /></button>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
+                      <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
+                      <td style={{ padding: '16px', color: '#334155' }}>{ind.categoria || '-'}</td>
+                      <td style={{ padding: '16px', color: '#334155' }}>
+                        {durSec !== null ? (
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            background: isSlow ? '#fee2e2' : isMedium ? '#fef3c7' : '#dcfce7',
+                            color: isSlow ? '#b91c1c' : isMedium ? '#b45309' : '#15803d'
+                          }}>
+                            {isSlow ? '🐢 ' : '⚡ '}{durSec}s
+                          </span>
+                        ) : <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>}
+                      </td>
+                      <td style={{ padding: '16px', color: '#334155' }}>{ind.ativo ? 'Sim' : 'Não'}</td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <button onClick={() => duplicarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginRight: '8px' }} title="Duplicar / Clonar Indicador"><Copy size={18}/></button>
+                        <button onClick={() => editarIndicador(ind)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar"><Edit2 size={18}/></button>
+                        <button onClick={() => deletarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir"><Trash2 size={18}/></button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filteredIndicadores.length === 0 && (
-                  <tr><td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
+                  <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
                 )}
               </tbody>
             </table>
@@ -419,10 +458,20 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                 </select>
               </div>
 
-              <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Peso</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Peso (Ponderação no Farol)</label>
                   <input type="number" name="peso" value={formData.peso} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
                 </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Ordem de Exibição</label>
+                  <input type="number" name="ordem" value={formData.ordem ?? 0} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Faixa de Tolerância Amarela (%)</label>
+                  <input type="number" step="0.5" name="tolerancia" value={formData.tolerancia ?? 5} onChange={handleChange} placeholder="Ex: 5" style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                </div>
+              </div>
             </div>
           )}
 
@@ -455,6 +504,43 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                   </span>
                 </div>
                 <textarea name="query_sql" value={formData.query_sql} onChange={handleChange} rows={6} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontFamily: 'monospace' }} />
+                {(() => {
+                  let hist = [];
+                  try {
+                    if (formData.historico_sql) hist = JSON.parse(formData.historico_sql);
+                  } catch (e) {}
+                  if (!Array.isArray(hist) || hist.length === 0) return null;
+                  return (
+                    <details style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px 12px' }}>
+                      <summary style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <History size={14} /> Histórico de Versões Anteriores desta Query ({hist.length})
+                      </summary>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px', maxHeight: '220px', overflowY: 'auto' }}>
+                        {hist.map((item, idx) => (
+                          <div key={idx} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                                Versão salva em {new Date(item.data).toLocaleString('pt-BR')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm('Restaurar esta versão da query SQL no editor?')) {
+                                    setFormData({ ...formData, query_sql: item.sql });
+                                  }
+                                }}
+                                style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                Restaurar esta query
+                              </button>
+                            </div>
+                            <pre style={{ margin: 0, fontSize: '0.75rem', color: '#1e293b', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{item.sql}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                })()}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
