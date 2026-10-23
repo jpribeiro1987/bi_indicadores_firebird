@@ -3,8 +3,10 @@
 :root {
   /* Colors */
   --bg-color: #0f1115;
-  --panel-bg: rgba(25, 27, 33, 0.7);
-  --panel-border: rgba(255, 255, 255, 0.08);
+  --bg-main: #161922;
+  --panel-bg: rgba(25, 27, 33, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
   --text-main: #f0f0f5;
   --text-muted: #9ba1a6;
   
@@ -21,10 +23,12 @@
 /* Light mode for Sector Panel */
 .theme-light {
   --bg-color: #f3f4f6;
-  --panel-bg: rgba(255, 255, 255, 0.8);
-  --panel-border: rgba(0, 0, 0, 0.05);
-  --text-main: #000000;
-  --text-muted: #333333;
+  --bg-main: #f8fafc;
+  --panel-bg: #ffffff;
+  --panel-border: rgba(0, 0, 0, 0.08);
+  --border: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #475569;
 }
 
 body {

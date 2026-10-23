@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
-import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2, Star, Trophy } from 'lucide-react';
+import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2, Star, Trophy, Camera } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -51,6 +51,28 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   // Temporary chart type override per indicator card
   const [chartTypeOverrides, setChartTypeOverrides] = useState({});
+
+  // Quick search and category filter inside Dashboard
+  const [dashSearch, setDashSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const chartRefs = useRef({});
+
+  const exportChartPng = (ind) => {
+    const chartInstance = chartRefs.current[ind.id]?.getEchartsInstance?.();
+    if (!chartInstance) {
+      return alert('Gráfico não disponível para exportação em imagem.');
+    }
+    const url = chartInstance.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: '#ffffff'
+    });
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (ind.nome || 'grafico').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
+    a.download = `${safeName}.png`;
+    a.click();
+  };
 
   const toggleFavorite = (indId) => {
     setFavoriteIds(prev => {
@@ -437,6 +459,36 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       }
       return rawVal;
     });
+
+    if (config.tipo_grafico === 'GAUGE') {
+      const lastRaw = data.length > 0 ? getVal(data[data.length - 1], config.coluna_y) : 0;
+      const val = typeof lastRaw === 'string' ? parseFloat(lastRaw.replace(',', '.')) : (Number(lastRaw) || 0);
+      const target = activeMeta && activeMeta.valor_alvo !== null ? parseFloat(String(activeMeta.valor_alvo).replace(',', '.')) : 100;
+      const maxVal = Math.max(val, target, 100) * 1.25;
+      const semColor = evaluateTargetColor(indicador, val, '#00cbb4');
+      return {
+        series: [{
+          type: 'gauge',
+          min: 0,
+          max: Math.round(maxVal),
+          progress: { show: true, width: 14, itemStyle: { color: semColor } },
+          axisLine: { lineStyle: { width: 14 } },
+          axisTick: { show: false },
+          splitLine: { length: 8, lineStyle: { width: 2, color: '#999' } },
+          axisLabel: { distance: 16, color: '#64748b', fontSize: 10 },
+          pointer: { itemStyle: { color: semColor } },
+          detail: {
+            valueAnimation: true,
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: semColor,
+            offsetCenter: [0, '70%'],
+            formatter: (v) => `${formatValue(v)}${indicador.unidade_medida ? ' ' + indicador.unidade_medida : ''}`
+          },
+          data: [{ value: Number(val.toFixed(2)), name: activeMeta ? `Meta: ${activeMeta.valor_alvo}` : '' }]
+        }]
+      };
+    }
 
     if (config.tipo_grafico === 'PIE' || config.tipo_grafico === 'DONUT') {
       const pieData = data.map(item => ({ name: getVal(item, config.coluna_x), value: getVal(item, config.coluna_y) }));
@@ -832,6 +884,28 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             ))}
           </select>
 
+          <select
+            value={selectedCategory}
+            onChange={e => setSelectedCategory(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
+          >
+            <option value="ALL">Todas as Categorias</option>
+            {Array.from(new Set((activeDash?.indicadores || []).map(di => di.indicador?.categoria).filter(Boolean))).map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+            <Search size={14} color="var(--text-muted)" />
+            <input
+              type="text"
+              placeholder="Buscar indicador..."
+              value={dashSearch}
+              onChange={e => setDashSearch(e.target.value)}
+              style={{ border: 'none', background: 'transparent', color: 'var(--text-main)', outline: 'none', fontSize: '0.85rem', width: '140px' }}
+            />
+          </div>
+
           {lastUpdate && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', marginRight: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
               <span>Última atualização:</span>
@@ -994,9 +1068,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                 </div>
               </div>
 
-              {/* Ranking Comparativo entre Setores (Visão Diretoria quando 'ALL' está selecionado) */}
+              {/* Ranking Comparativo entre Setores (Visão Diretoria quando 'ALL' está selecionado - Minimizado por padrão) */}
               {selectedSectorId === 'ALL' && sectorRanking.length > 1 && (
-                <details className="no-print" open style={{ background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
+                <details className="no-print" style={{ background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
                   <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Trophy size={16} color="#f59e0b" /> Ranking Comparativo de Desempenho por Setor (Clique em um setor para filtrar)
                   </summary>
@@ -1062,8 +1136,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
               return (a.indicador.ordem || 0) - (b.indicador.ordem || 0);
             })
             .filter(di => {
-              if (statusFilter === 'ALL') return true;
               const ind = di.indicador;
+              if (selectedCategory !== 'ALL' && ind.categoria !== selectedCategory) return false;
+              if (dashSearch) {
+                const q = dashSearch.toLowerCase();
+                const match = (ind.nome || '').toLowerCase().includes(q) || (ind.codigo || '').toLowerCase().includes(q) || (ind.categoria || '').toLowerCase().includes(q);
+                if (!match) return false;
+              }
+              if (statusFilter === 'ALL') return true;
               if (statusFilter === 'FAV') return favoriteIds.includes(ind.id);
               const res = indicatorData[ind.id];
               if (!res || !res.data) return false;
@@ -1164,9 +1244,20 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                       <option value="LINE">Linha</option>
                       <option value="AREA">Área</option>
                       <option value="PIE">Pizza</option>
+                      <option value="GAUGE">Velocímetro</option>
                       <option value="TABLE">Tabela</option>
                       <option value="CARD">Card</option>
                     </select>
+                    {effectiveType !== 'TABLE' && effectiveType !== 'CARD' && res && (
+                      <button
+                        type="button"
+                        title="Baixar imagem do gráfico em alta resolução (PNG)"
+                        onClick={() => exportChartPng(ind)}
+                        style={{ padding: '4px 6px', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <Camera size={13} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       title="Expandir Gráfico / Tabela em Tela Cheia"
@@ -1308,9 +1399,10 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                       </div>
                     ) : (
                       <ReactECharts 
+                        ref={el => { if (el) chartRefs.current[ind.id] = el; }}
                         option={getOption(ind, res, filteredData, effectiveType)} 
                         style={{ height: '100%', width: '100%' }}
-                        opts={{ renderer: 'svg' }}
+                        opts={{ renderer: 'canvas' }}
                         onEvents={{
                           click: (params) => handleChartPointClick(ind, params)
                         }}
@@ -1320,8 +1412,30 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                     <div style={{ color: 'var(--text-muted)' }}>Carregando dados...</div>
                   )}
                 </div>
+                {(() => {
+                  if (!filteredData || filteredData.length < 2 || !ind.coluna_y || effectiveType === 'TABLE') return null;
+                  const nums = filteredData
+                    .map(r => {
+                      const v = getVal(r, ind.coluna_y);
+                      return typeof v === 'string' ? parseFloat(v.replace(',', '.')) : v;
+                    })
+                    .filter(v => typeof v === 'number' && !isNaN(v));
+                  if (nums.length < 2) return null;
+                  const minV = Math.min(...nums);
+                  const maxV = Math.max(...nums);
+                  const sumV = nums.reduce((a, b) => a + b, 0);
+                  const avgV = sumV / nums.length;
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed var(--border)', fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                      <span>Mín: <strong style={{ color: 'var(--text-main)' }}>{minV.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong></span>
+                      <span>Máx: <strong style={{ color: 'var(--text-main)' }}>{maxV.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong></span>
+                      <span>Média (x̄): <strong style={{ color: '#3b82f6' }}>{avgV.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong></span>
+                      <span>Acumulado (Σ): <strong style={{ color: 'var(--text-main)' }}>{sumV.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong></span>
+                    </div>
+                  );
+                })()}
                 {ind.descricao && (
-                  <div style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+                  <div style={{ marginTop: '6px', fontSize: '0.82rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '6px' }}>
                     {ind.descricao}
                   </div>
                 )}

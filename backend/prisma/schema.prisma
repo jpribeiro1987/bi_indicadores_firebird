@@ -237,18 +237,20 @@ model MetaIndicador {
 }
 
 model PlanoAcaoIndicador {
-  id            Int       @id @default(autoincrement())
-  indicadorId   Int
-  indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
-  competencia   String?
-  valor_obtido  Float?
-  meta_esperada Float?
-  justificativa String
-  plano_acao    String
-  responsavel   String?
-  prazo         String?
-  status        String    @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDO
-  criado_em     DateTime  @default(now())
+  id                 Int       @id @default(autoincrement())
+  indicadorId        Int
+  indicador          Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  competencia        String?
+  valor_obtido       Float?
+  meta_esperada      Float?
+  justificativa      String
+  plano_acao         String
+  responsavel        String?
+  prazo              String?
+  status             String    @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDO
+  eficacia           String?   @default("PENDENTE") // PENDENTE, EFICAZ, INEFICAZ
+  evidencia_eficacia String?
+  criado_em          DateTime  @default(now())
 }
 
 model Dashboard {

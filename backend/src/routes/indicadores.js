@@ -143,6 +143,7 @@ router.get('/', async (req, res) => {
   try {
     const indicadores = await prisma.indicador.findMany({
       include: {
+        setor: true,
         metas: true,
         planosAcao: { orderBy: { criado_em: 'desc' } },
         cache: { select: { atualizado_em: true, duracao_ms: true } }
@@ -153,6 +154,22 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar indicadores' });
+  }
+});
+
+// Alternar rapidamente status ativo/inativo de um indicador
+router.patch('/:id/ativo', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { ativo } = req.body;
+    const atualizado = await prisma.indicador.update({
+      where: { id },
+      data: { ativo: Boolean(ativo) }
+    });
+    await registrarAuditoria(`[Auditoria] Indicador "${atualizado.nome}" alterado para ${atualizado.ativo ? 'ATIVO' : 'INATIVO'}`);
+    res.json(atualizado);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar status do indicador' });
   }
 });
 
@@ -490,7 +507,7 @@ router.get('/:id/planos-acao', async (req, res) => {
 router.post('/:id/planos-acao', async (req, res) => {
   try {
     const indicadorId = parseInt(req.params.id);
-    const { competencia, valor_obtido, meta_esperada, justificativa, plano_acao, responsavel, prazo, status } = req.body;
+    const { competencia, valor_obtido, meta_esperada, justificativa, plano_acao, responsavel, prazo, status, eficacia, evidencia_eficacia } = req.body;
     const novo = await prisma.planoAcaoIndicador.create({
       data: {
         indicadorId,
@@ -501,8 +518,11 @@ router.post('/:id/planos-acao', async (req, res) => {
         plano_acao: plano_acao || '',
         responsavel: responsavel || '',
         prazo: prazo || '',
-        status: status || 'PENDENTE'
-      }
+        status: status || 'PENDENTE',
+        eficacia: eficacia || 'PENDENTE',
+        evidencia_eficacia: evidencia_eficacia || null
+      },
+      include: { indicador: { include: { setor: true } } }
     });
     await registrarAuditoria(`[SGQ] Plano de Ação registrado para o indicador ID ${indicadorId} (Competência: ${competencia || '-'})`);
     res.json(novo);
@@ -515,7 +535,7 @@ router.post('/:id/planos-acao', async (req, res) => {
 router.put('/planos-acao/:planoId', async (req, res) => {
   try {
     const id = parseInt(req.params.planoId);
-    const { competencia, status, justificativa, plano_acao, responsavel, prazo } = req.body;
+    const { competencia, status, justificativa, plano_acao, responsavel, prazo, eficacia, evidencia_eficacia } = req.body;
     const atualizado = await prisma.planoAcaoIndicador.update({
       where: { id },
       data: {
@@ -524,10 +544,13 @@ router.put('/planos-acao/:planoId', async (req, res) => {
         ...(justificativa !== undefined ? { justificativa } : {}),
         ...(plano_acao !== undefined ? { plano_acao } : {}),
         ...(responsavel !== undefined ? { responsavel } : {}),
-        ...(prazo !== undefined ? { prazo } : {})
-      }
+        ...(prazo !== undefined ? { prazo } : {}),
+        ...(eficacia !== undefined ? { eficacia } : {}),
+        ...(evidencia_eficacia !== undefined ? { evidencia_eficacia } : {})
+      },
+      include: { indicador: { include: { setor: true } } }
     });
-    await registrarAuditoria(`[SGQ] Plano de Ação ID ${id} atualizado (Status: ${atualizado.status})`);
+    await registrarAuditoria(`[SGQ] Plano de Ação ID ${id} atualizado (Status: ${atualizado.status}, Eficácia: ${atualizado.eficacia || 'PENDENTE'})`);
     res.json(atualizado);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar plano de ação' });

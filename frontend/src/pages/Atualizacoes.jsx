@@ -3,10 +3,43 @@ import { Sparkles, CheckCircle2, Calendar, Tag, Search } from 'lucide-react';
 
 const UPDATES_HISTORY = [
   {
+    versao: 'v2.8.0',
+    data: '23/10/2026',
+    titulo: 'Velocímetro (Gauge), Exportação PNG, Estatísticas Mín/Máx/Σ, Avaliação PDCA (SGQ), Teste SQL na Lista e Busca no Painel',
+    destaque: true,
+    itens: [
+      {
+        categoria: 'Dashboards',
+        titulo: 'Busca Rápida, Filtro por Categoria e Ranking de Setores Minimizado por Padrão',
+        descricao: 'Adicionados campo de busca instantânea por nome/código e seletor de Categoria diretamente no topo do Dashboard. O Ranking Comparativo de Setores agora inicia recolhido (minimizado) por padrão.'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Gráfico de Velocímetro (Gauge), Exportar Gráfico em PNG (📷) e Estatísticas no Card',
+        descricao: 'Novo tipo de gráfico Velocímetro de Meta (Gauge), botão de câmera (📷) em cada card para salvar o gráfico em imagem PNG de alta resolução e faixa automática no rodapé exibindo Mínimo, Máximo, Média (x̄) e Acumulado (Σ).'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Verificação de Eficácia (PDCA) e Cadastro Direto na Central SGQ',
+        descricao: 'Adicionado controle de Eficácia da Ação (A Avaliar, Eficaz, Ineficaz) e Evidência/Parecer para auditorias de qualidade (ONA/ISO), além do botão "+ Novo Plano de Ação" diretamente na aba Planos de Ação (SGQ).'
+      },
+      {
+        categoria: 'Construtor de BI',
+        titulo: 'Teste Rápido na Tabela (▶), Ativar/Desativar em 1 Clique e Filtros por Setor/Status',
+        descricao: 'Botão de testar SQL diretamente na linha da tabela do Construtor (exibindo registros e tempo em segundos), botão de 1 clique para alternar Ativo/Inativo, colunas de Setor e Meta Vigente e filtros por Setor e Status.'
+      },
+      {
+        categoria: 'Logs & Sincronização',
+        titulo: 'Busca, Filtro de Falhas, Exportação XLS nos Logs e Refinamento do Tema Escuro',
+        descricao: 'Aba de Logs agora possui pesquisa em tempo real, filtro exclusivo para Falhas, exportação para Excel (.xls) e variáveis visuais aprimoradas para alternância entre Tema Claro e Tema Escuro.'
+      }
+    ]
+  },
+  {
     versao: 'v2.7.0',
     data: '23/10/2026',
     titulo: 'Ranking de Setores, Semáforo 3 Cores (Tolerância), Drill-Down nos Gráficos, Favoritos, Rollback SQL e Cobrança SGQ',
-    destaque: true,
+    destaque: false,
     itens: [
       {
         categoria: 'Dashboards & Metas',

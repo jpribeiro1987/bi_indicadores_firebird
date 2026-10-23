@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ClipboardList, Search, Trash2, Download, AlertTriangle, CheckCircle2, Clock, Mail, Edit2 } from 'lucide-react';
+import { ClipboardList, Search, Trash2, Download, AlertTriangle, CheckCircle2, Clock, Mail, Edit2, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function PlanosAcao({ userRole, userSectors = [] }) {
   const [planos, setPlanos] = useState([]);
   const [setores, setSetores] = useState([]);
+  const [indicadores, setIndicadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [filtroSetor, setFiltroSetor] = useState('ALL');
   const [filtroStatus, setFiltroStatus] = useState('ALL');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [editingPlano, setEditingPlano] = useState(null);
+  const [creatingPlano, setCreatingPlano] = useState(null);
 
   const fetchDados = async () => {
     setLoading(true);
     try {
-      const [planosRes, setoresRes] = await Promise.all([
+      const [planosRes, setoresRes, indRes] = await Promise.all([
         axios.get('/api/indicadores/planos-acao/todos'),
-        axios.get('/api/setores')
+        axios.get('/api/setores'),
+        axios.get('/api/indicadores')
       ]);
       setPlanos(planosRes.data || []);
       setSetores(setoresRes.data || []);
+      setIndicadores(indRes.data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -56,6 +60,28 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
     }
   };
 
+  const atualizarEficacia = async (id, eficacia) => {
+    try {
+      await axios.put(`/api/indicadores/planos-acao/${id}`, { eficacia });
+      setPlanos(prev => prev.map(p => p.id === id ? { ...p, eficacia } : p));
+    } catch (e) {
+      alert('Erro ao atualizar avaliação de eficácia.');
+    }
+  };
+
+  const salvarNovoPlano = async () => {
+    if (!creatingPlano?.indicadorId || !creatingPlano.justificativa || !creatingPlano.plano_acao) {
+      return alert('Selecione o Indicador e preencha a Justificativa e o Plano de Ação.');
+    }
+    try {
+      const res = await axios.post(`/api/indicadores/${creatingPlano.indicadorId}/planos-acao`, creatingPlano);
+      setPlanos(prev => [res.data, ...prev]);
+      setCreatingPlano(null);
+    } catch (e) {
+      alert('Erro ao cadastrar novo Plano de Ação.');
+    }
+  };
+
   const excluirPlano = async (id) => {
     if (!window.confirm('Deseja realmente excluir este Plano de Ação?')) return;
     try {
@@ -75,7 +101,9 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
         plano_acao: editingPlano.plano_acao,
         responsavel: editingPlano.responsavel,
         prazo: editingPlano.prazo,
-        status: editingPlano.status
+        status: editingPlano.status,
+        eficacia: editingPlano.eficacia || 'PENDENTE',
+        evidencia_eficacia: editingPlano.evidencia_eficacia || ''
       });
       setPlanos(prev => prev.map(p => p.id === editingPlano.id ? { ...p, ...res.data } : p));
       setEditingPlano(null);
@@ -141,6 +169,8 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
       RESPONSAVEL: p.responsavel || '-',
       PRAZO: p.prazo || '-',
       STATUS: p.status,
+      EFICACIA_PDCA: p.eficacia || 'PENDENTE',
+      EVIDENCIA_EFICACIA: p.evidencia_eficacia || '-',
       CRIADO_EM: new Date(p.criado_em).toLocaleDateString('pt-BR')
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -164,9 +194,17 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {userRole !== 'LEITURA' && (
-            <button onClick={enviarCobrancaEmail} disabled={sendingEmail} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
-              <Mail size={16} /> {sendingEmail ? 'Enviando...' : 'Cobrar Pendentes por E-mail'}
-            </button>
+            <>
+              <button
+                onClick={() => setCreatingPlano({ indicadorId: '', competencia: '', valor_obtido: '', meta_esperada: '', justificativa: '', plano_acao: '', responsavel: '', prazo: '', status: 'PENDENTE' })}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                <Plus size={16} /> Novo Plano de Ação
+              </button>
+              <button onClick={enviarCobrancaEmail} disabled={sendingEmail} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                <Mail size={16} /> {sendingEmail ? 'Enviando...' : 'Cobrar Pendentes por E-mail'}
+              </button>
+            </>
           )}
           <button onClick={exportarXls} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
             <Download size={16} /> Exportar XLS
@@ -244,12 +282,14 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
                 <th style={{ padding: '12px' }}>Plano de Ação</th>
                 <th style={{ padding: '12px' }}>Responsável / Prazo</th>
                 <th style={{ padding: '12px' }}>Status</th>
+                <th style={{ padding: '12px' }}>Eficácia (PDCA)</th>
                 {userRole !== 'LEITURA' && <th style={{ padding: '12px', textAlign: 'right' }}>Ações</th>}
               </tr>
             </thead>
             <tbody>
               {planosFiltrados.map(p => {
                 const vencido = isPrazoVencido(p.prazo, p.status);
+                const efic = p.eficacia || 'PENDENTE';
                 return (
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', background: vencido ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
                     <td style={{ padding: '12px', color: 'var(--text-main)' }}>
@@ -262,7 +302,14 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
                       <span style={{ color: 'var(--text-muted)' }}> / Meta: {p.meta_esperada ?? '-'}</span>
                     </td>
                     <td style={{ padding: '12px', color: 'var(--text-main)', maxWidth: '240px' }}>{p.justificativa}</td>
-                    <td style={{ padding: '12px', color: 'var(--text-main)', maxWidth: '240px' }}>{p.plano_acao}</td>
+                    <td style={{ padding: '12px', color: 'var(--text-main)', maxWidth: '240px' }}>
+                      <div>{p.plano_acao}</div>
+                      {p.evidencia_eficacia && (
+                        <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '4px' }}>
+                          <strong>Evidência:</strong> {p.evidencia_eficacia}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '12px', color: 'var(--text-main)' }}>
                       <div><strong>{p.responsavel || '-'}</strong></div>
                       <div style={{ fontSize: '0.78rem', color: vencido ? '#ef4444' : 'var(--text-muted)', fontWeight: vencido ? 'bold' : 'normal' }}>
@@ -287,6 +334,26 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
                         <option value="PENDENTE">PENDENTE</option>
                         <option value="EM_ANDAMENTO">EM ANDAMENTO</option>
                         <option value="CONCLUIDO">CONCLUÍDO</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <select
+                        value={efic}
+                        disabled={userRole === 'LEITURA'}
+                        onChange={e => atualizarEficacia(p.id, e.target.value)}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border)',
+                          fontWeight: 'bold',
+                          fontSize: '0.75rem',
+                          background: efic === 'EFICAZ' ? '#10b98120' : efic === 'INEFICAZ' ? '#ef444420' : 'var(--bg-main)',
+                          color: efic === 'EFICAZ' ? '#10b981' : efic === 'INEFICAZ' ? '#ef4444' : 'var(--text-muted)'
+                        }}
+                      >
+                        <option value="PENDENTE">⏳ A Avaliar</option>
+                        <option value="EFICAZ">✅ Eficaz</option>
+                        <option value="INEFICAZ">❌ Ineficaz</option>
                       </select>
                     </td>
                     {userRole !== 'LEITURA' && (
@@ -345,9 +412,81 @@ export default function PlanosAcao({ userRole, userSectors = [] }) {
                   <input type="date" value={editingPlano.prazo || ''} onChange={e => setEditingPlano({ ...editingPlano, prazo: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Verificação de Eficácia (PDCA)</label>
+                  <select value={editingPlano.eficacia || 'PENDENTE'} onChange={e => setEditingPlano({ ...editingPlano, eficacia: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                    <option value="PENDENTE">⏳ A Avaliar</option>
+                    <option value="EFICAZ">✅ Eficaz</option>
+                    <option value="INEFICAZ">❌ Ineficaz</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Evidência / Parecer de Eficácia</label>
+                  <input placeholder="Ex: Indicador retornou à meta no mês seguinte" value={editingPlano.evidencia_eficacia || ''} onChange={e => setEditingPlano({ ...editingPlano, evidencia_eficacia: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
                 <button onClick={() => setEditingPlano(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
                 <button onClick={salvarEdicaoPlano} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Salvar Alterações</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criação de Novo Plano de Ação direto pela Central SGQ */}
+      {creatingPlano && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.72)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '580px', width: '100%', padding: '24px', boxShadow: '0 20px 45px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#0f172a' }}>Novo Plano de Ação (SGQ)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Indicador *</label>
+                <select value={creatingPlano.indicadorId} onChange={e => setCreatingPlano({ ...creatingPlano, indicadorId: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="">Selecione o Indicador...</option>
+                  {indicadores
+                    .filter(ind => userRole === 'ADMIN' || !ind.setorId || userSectors.includes(ind.setorId))
+                    .map(ind => (
+                      <option key={ind.id} value={ind.id}>{ind.setor?.nome ? `[${ind.setor.nome}] ` : ''}{ind.nome}</option>
+                    ))}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Competência</label>
+                  <input placeholder="Ex: 10/2026" value={creatingPlano.competencia} onChange={e => setCreatingPlano({ ...creatingPlano, competencia: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Valor Obtido</label>
+                  <input type="number" value={creatingPlano.valor_obtido} onChange={e => setCreatingPlano({ ...creatingPlano, valor_obtido: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Meta Esperada</label>
+                  <input type="number" value={creatingPlano.meta_esperada} onChange={e => setCreatingPlano({ ...creatingPlano, meta_esperada: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Análise Crítica / Justificativa *</label>
+                <textarea rows={2} value={creatingPlano.justificativa} onChange={e => setCreatingPlano({ ...creatingPlano, justificativa: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Plano de Ação Corretiva *</label>
+                <textarea rows={2} value={creatingPlano.plano_acao} onChange={e => setCreatingPlano({ ...creatingPlano, plano_acao: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Responsável</label>
+                  <input value={creatingPlano.responsavel} onChange={e => setCreatingPlano({ ...creatingPlano, responsavel: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Prazo</label>
+                  <input type="date" value={creatingPlano.prazo} onChange={e => setCreatingPlano({ ...creatingPlano, prazo: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button onClick={() => setCreatingPlano(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
+                <button onClick={salvarNovoPlano} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#10b981', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cadastrar Plano</button>
               </div>
             </div>
           </div>

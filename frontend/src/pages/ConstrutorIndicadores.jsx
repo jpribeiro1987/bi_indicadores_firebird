@@ -9,6 +9,9 @@ import ModalConexaoBI from '../components/ModalConexaoBI';
 export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   const [indicadores, setIndicadores] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtroSetor, setFiltroSetor] = useState('ALL');
+  const [filtroStatus, setFiltroStatus] = useState('ALL');
+  const [rowTestStatus, setRowTestStatus] = useState({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [isUnidadeModalOpen, setIsUnidadeModalOpen] = useState(false);
@@ -219,6 +222,30 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     }
   };
 
+  const toggleAtivo = async (ind) => {
+    try {
+      await axios.patch(`/api/indicadores/${ind.id}/ativo`, { ativo: !ind.ativo });
+      setIndicadores(prev => prev.map(item => item.id === ind.id ? { ...item, ativo: !ind.ativo } : item));
+    } catch (err) {
+      alert('Erro ao alternar status do indicador');
+    }
+  };
+
+  const testarQueryNaLista = async (ind) => {
+    setRowTestStatus(prev => ({ ...prev, [ind.id]: { status: 'TESTING', msg: 'Testando...' } }));
+    const t0 = Date.now();
+    try {
+      const res = await axios.post('/api/indicadores/testar', { query_sql: ind.query_sql, conexaoId: ind.conexaoId });
+      const headerMs = res.headers && res.headers['x-query-duration-ms'];
+      const ms = headerMs ? parseInt(headerMs, 10) : (Date.now() - t0);
+      const count = Array.isArray(res.data) ? res.data.length : 0;
+      setRowTestStatus(prev => ({ ...prev, [ind.id]: { status: 'OK', msg: `OK (${count} reg • ${(ms / 1000).toFixed(2)}s)` } }));
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.message || 'Erro SQL';
+      setRowTestStatus(prev => ({ ...prev, [ind.id]: { status: 'ERR', msg: errMsg.substring(0, 60) } }));
+    }
+  };
+
   const editarIndicador = (ind) => {
     const formattedMetas = (ind.metas || []).map(m => ({
       ...m,
@@ -235,11 +262,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   if (!isFormOpen) {
-    const filteredIndicadores = indicadores.filter(ind => 
-      ind.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (ind.codigo && ind.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (ind.categoria && ind.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredIndicadores = indicadores.filter(ind => {
+      if (filtroSetor !== 'ALL' && String(ind.setorId || '') !== String(filtroSetor)) return false;
+      if (filtroStatus === 'ATIVOS' && !ind.ativo) return false;
+      if (filtroStatus === 'INATIVOS' && ind.ativo) return false;
+      const matchText =
+        ind.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (ind.codigo && ind.codigo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (ind.categoria && ind.categoria.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchText;
+    });
 
     return (
       <>
@@ -269,7 +301,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               </button>
             </div>
           </div>
-          <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input 
               type="text" 
               placeholder="Pesquisar por nome, código ou categoria..." 
@@ -277,18 +309,28 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               onChange={(e) => setSearchTerm(e.target.value)} 
               style={{ padding: '10px 16px', border: '1px solid #ccc', borderRadius: '4px', width: '300px' }}
             />
+            <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', background: '#fff', color: '#334155' }}>
+              <option value="ALL">Todos os Setores</option>
+              {setores.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            </select>
+            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', background: '#fff', color: '#334155' }}>
+              <option value="ALL">Todos (Ativos e Inativos)</option>
+              <option value="ATIVOS">Apenas Ativos</option>
+              <option value="INATIVOS">Apenas Inativos</option>
+            </select>
           </div>
-          <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <tr>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ordem</th>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Código</th>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Nome</th>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Categoria</th>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Performance SQL</th>
-                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ativo</th>
-                  <th style={{ padding: '16px', textAlign: 'right', color: '#475569' }}>Ações</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Ordem</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Código</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Nome</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Setor / Categoria</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Meta Atual</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Performance SQL</th>
+                  <th style={{ padding: '14px', textAlign: 'left', color: '#475569' }}>Ativo</th>
+                  <th style={{ padding: '14px', textAlign: 'right', color: '#475569' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,19 +339,34 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                   const durSec = durMs !== undefined && durMs !== null ? (durMs / 1000).toFixed(2) : null;
                   const isSlow = durMs > 10000;
                   const isMedium = durMs > 3000 && durMs <= 10000;
+                  const rTest = rowTestStatus[ind.id];
+                  const metaAtual = ind.metas && ind.metas.length > 0 ? `${ind.metas[0].valor_alvo} ${ind.unidade_medida || ''}` : '-';
                   return (
                     <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '16px', color: '#334155' }}>
+                      <td style={{ padding: '14px', color: '#334155' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{ fontWeight: 700, minWidth: '22px' }}>{ind.ordem || 0}</span>
                           <button onClick={() => alterarOrdem(ind, -1)} title="Subir prioridade (diminuir ordem)" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer' }}><ArrowUp size={12} /></button>
                           <button onClick={() => alterarOrdem(ind, 1)} title="Descer prioridade (aumentar ordem)" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer' }}><ArrowDown size={12} /></button>
                         </div>
                       </td>
-                      <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
-                      <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
-                      <td style={{ padding: '16px', color: '#334155' }}>{ind.categoria || '-'}</td>
-                      <td style={{ padding: '16px', color: '#334155' }}>
+                      <td style={{ padding: '14px', color: '#334155' }}>{ind.codigo || '-'}</td>
+                      <td style={{ padding: '14px', color: '#334155', fontWeight: 'bold' }}>
+                        <div>{ind.nome}</div>
+                        {rTest && (
+                          <div style={{ fontSize: '0.73rem', marginTop: '3px', fontWeight: 600, color: rTest.status === 'OK' ? '#15803d' : rTest.status === 'ERR' ? '#dc2626' : '#64748b' }}>
+                            {rTest.status === 'OK' ? '✅ ' : rTest.status === 'ERR' ? '❌ ' : '⏳ '}{rTest.msg}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px', color: '#334155' }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#4f46e5' }}>{ind.setor?.nome || 'Geral'}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{ind.categoria || '-'}</div>
+                      </td>
+                      <td style={{ padding: '14px', color: '#334155', fontSize: '0.85rem' }}>
+                        <strong>{metaAtual}</strong>
+                      </td>
+                      <td style={{ padding: '14px', color: '#334155' }}>
                         {durSec !== null ? (
                           <span style={{
                             padding: '3px 8px',
@@ -323,8 +380,26 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                           </span>
                         ) : <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>}
                       </td>
-                      <td style={{ padding: '16px', color: '#334155' }}>{ind.ativo ? 'Sim' : 'Não'}</td>
-                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <td style={{ padding: '14px', color: '#334155' }}>
+                        <button
+                          onClick={() => toggleAtivo(ind)}
+                          title="Clique para alternar Ativo / Inativo"
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: ind.ativo ? '#dcfce7' : '#f1f5f9',
+                            color: ind.ativo ? '#15803d' : '#64748b'
+                          }}
+                        >
+                          {ind.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                      </td>
+                      <td style={{ padding: '14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => testarQueryNaLista(ind)} style={{ background: 'none', border: 'none', color: '#00cbb4', cursor: 'pointer', marginRight: '8px' }} title="Testar Query SQL agora"><Play size={18}/></button>
                         <button onClick={() => duplicarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginRight: '8px' }} title="Duplicar / Clonar Indicador"><Copy size={18}/></button>
                         <button onClick={() => editarIndicador(ind)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar"><Edit2 size={18}/></button>
                         <button onClick={() => deletarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir"><Trash2 size={18}/></button>
@@ -333,7 +408,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                   );
                 })}
                 {filteredIndicadores.length === 0 && (
-                  <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
+                  <tr><td colSpan="8" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador encontrado.</td></tr>
                 )}
               </tbody>
             </table>
@@ -552,6 +627,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                     <option value="AREA">Área</option>
                     <option value="PIE">Pizza</option>
                     <option value="DONUT">Rosca (Donut)</option>
+                    <option value="GAUGE">Velocímetro de Meta (Gauge)</option>
                     <option value="SCATTER">Dispersão</option>
                     <option value="TABLE">Tabela de Dados</option>
                     <option value="CARD">Card Numérico</option>
