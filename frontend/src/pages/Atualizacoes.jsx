@@ -3,10 +3,68 @@ import { Sparkles, CheckCircle2, Calendar, Tag, Search } from 'lucide-react';
 
 const UPDATES_HISTORY = [
   {
+    versao: 'v3.0.0',
+    data: '23/10/2026',
+    titulo: 'Pacote Completo de Acreditação Hospitalar ONA, 5W2H, Ishikawa 6M, 5 Porquês, Matriz GUT, Benchmarking, Dossiê ONA, Gestão de Incidentes e Configurações SMTP',
+    destaque: true,
+    itens: [
+      {
+        categoria: 'Acreditação ONA & Ficha Técnica',
+        titulo: 'Ficha Técnica Donabedian (Estrutura, Processo, Resultado) e Dimensões da Qualidade',
+        descricao: 'Nova aba dedicada no Construtor de BI para cadastrar a classificação formal ONA: Tríade Donabedian (Estrutura, Processo e Resultado), Dimensões da Qualidade (Segurança, Efetividade, Eficiência, Centrado no Paciente, Oportunidade e Equidade), vínculo às 6 Metas Internacionais de Segurança do Paciente (MS/Anvisa) e controle de versão/data de revisão da ficha técnica.'
+      },
+      {
+        categoria: 'Metas & Benchmarking Externo (ONA Nível 3)',
+        titulo: 'Referencial de Mercado / Benchmarking Externo nos Gráficos (Linha Roxa)',
+        descricao: 'Cadastro de valor referencial de mercado e fonte externa (ex: ANAHP, Ministério da Saúde, benchmarks regionais) na Meta do indicador. Exibição automática da terceira linha de referência (roxa / dash-dot) em todos os gráficos ECharts comparando o desempenho interno contra o mercado.'
+      },
+      {
+        categoria: 'Causa Raiz & Planos de Ação (SGQ)',
+        titulo: 'Análise de Causa Raiz Estruturada (Diagrama de Ishikawa 6M e Método dos 5 Porquês)',
+        descricao: 'Integração de ferramentas clássicas de qualidade no registro de desvios e planos de ação: Diagrama de Ishikawa estruturado em 6M (Método, Mão de Obra, Material, Máquina, Meio Ambiente e Medida) e Método dos 5 Porquês com perguntas guiadas até a causa raiz primária.'
+      },
+      {
+        categoria: 'Metodologia 5W2H',
+        titulo: 'Plano de Ação no Padrão 5W2H Completo',
+        descricao: 'Formulário e visualizador estruturado com os 7 campos essenciais: What (O que será feito), Why (Por que será feito), Where (Onde será executado), Who (Quem é o responsável), When (Quando / Prazo), How (Como será feito) e How Much (Recursos / Custos estimados).'
+      },
+      {
+        categoria: 'Priorização da Qualidade',
+        titulo: 'Matriz GUT (Gravidade, Urgência e Tendência) com Cálculo Automático',
+        descricao: 'Seletores de notas de 1 a 5 para Gravidade, Urgência e Tendência com cálculo em tempo real do índice GUT (G × U × T, variando de 1 a 125). Classificação visual por prioridade (🔴 Crítico >64, 🟠 Alto 36-64, 🟡 Médio 16-35 e 🟢 Baixo <16) e ordenação por prioridade na Central SGQ.'
+      },
+      {
+        categoria: 'Auditoria Hospitalar ONA',
+        titulo: 'Emissão de Dossiê Completo do Indicador para Auditoria ONA (PDF / Impressão)',
+        descricao: 'Novo botão de Dossiê ONA em cada card do dashboard que gera relatório técnico consolidado pronto para auditoria externa: reúne Ficha Técnica completa, metas vigentes, benchmarking de mercado, medições históricas, análises de causa raiz, planos 5W2H, evidências de eficácia do PDCA e campos formais para assinatura do Gestor do Setor e do Comitê de Qualidade.'
+      },
+      {
+        categoria: 'Segurança do Paciente (NSP)',
+        titulo: 'Módulo de Gestão de Incidentes, Quase Falhas (Near Miss) e Eventos Adversos',
+        descricao: 'Nova tela no menu lateral dedicada ao Núcleo de Segurança do Paciente (NSP): notificação sigilosa com protocolo sequencial automático (INC-AAAAMM-0001), classificação de risco (Near Miss, Sem Dano, Com Dano Leve/Moderado/Grave, Sentinela), investigação de barreiras, parecer conclusivo do NSP e exportação XLS.'
+      },
+      {
+        categoria: 'Governança & Comitê de Qualidade',
+        titulo: 'Módulo de Análise Crítica Periódica & Fechamento de Ciclo ONA',
+        descricao: 'Nova tela no menu lateral para registro formal das atas de reuniões periódicas do Comitê de Qualidade por competência, documentando pontos fortes, oportunidades de melhoria, deliberações da alta administração e status de aprovação.'
+      },
+      {
+        categoria: 'Configurações & Comunicação',
+        titulo: 'Configurações Gerais de SMTP e Teste de Envio de E-mail',
+        descricao: 'Configuração dos parâmetros de envio de e-mail (Host, Porta, Usuário, Senha, Remetente) diretamente pela interface administrativa em Configurações, com botão "Testar Envio de E-mail" para validação imediata antes do disparo das cobranças de planos de ação.'
+      },
+      {
+        categoria: 'Documentação & Treinamento',
+        titulo: 'Manual do Usuário Interativo Atualizado (Capítulo 6 ONA)',
+        descricao: 'Manual oficial do sistema atualizado para a versão 3.0.0 com novo capítulo dedicado aos critérios da Acreditação ONA, guias práticos de Ishikawa, 5W2H, Matriz GUT e Dossiê de Auditoria.'
+      }
+    ]
+  },
+  {
     versao: 'v2.8.0',
     data: '23/10/2026',
     titulo: 'Velocímetro (Gauge), Exportação PNG, Estatísticas Mín/Máx/Σ, Avaliação PDCA (SGQ), Teste SQL na Lista e Busca no Painel',
-    destaque: true,
+    destaque: false,
     itens: [
       {
         categoria: 'Dashboards',
