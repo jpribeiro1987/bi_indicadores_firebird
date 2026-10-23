@@ -212,7 +212,9 @@ router.post('/', async (req, res) => {
       descricao: m.descricao || '',
       valor_alvo: parseFloat(String(m.valor_alvo).replace(',', '.')) || 0,
       competencia: m.competencia || null,
-      data_limite: m.data_limite ? new Date(m.data_limite) : null
+      data_limite: m.data_limite ? new Date(m.data_limite) : null,
+      benchmarking: m.benchmarking !== undefined && m.benchmarking !== null && m.benchmarking !== '' ? parseFloat(String(m.benchmarking).replace(',', '.')) : null,
+      benchmarking_fonte: m.benchmarking_fonte || null
     })) : [];
 
     const indicador = await prisma.indicador.create({
@@ -239,6 +241,11 @@ router.post('/', async (req, res) => {
         dias_alerta: data.dias_alerta ? parseInt(data.dias_alerta) : null,
         ordem: data.ordem !== undefined && data.ordem !== '' ? parseInt(data.ordem) : 0,
         tolerancia: data.tolerancia !== undefined && data.tolerancia !== '' ? parseFloat(String(data.tolerancia).replace(',', '.')) : 5,
+        tipo_ona: data.tipo_ona || 'PROCESSO',
+        dimensao_qualidade: data.dimensao_qualidade || 'SEGURANCA',
+        protocolo_seguranca: data.protocolo_seguranca || 'NAO_APLICAVEL',
+        versao_ficha: data.versao_ficha ? parseInt(data.versao_ficha) : 1,
+        revisao_data: data.revisao_data ? new Date(data.revisao_data) : new Date(),
         metas: {
           create: metasData
         }
@@ -309,12 +316,19 @@ router.post('/:id/duplicar', async (req, res) => {
         coluna_x: original.coluna_x,
         coluna_y: original.coluna_y,
         dias_alerta: original.dias_alerta,
+        tipo_ona: original.tipo_ona,
+        dimensao_qualidade: original.dimensao_qualidade,
+        protocolo_seguranca: original.protocolo_seguranca,
+        versao_ficha: (original.versao_ficha || 1) + 1,
+        revisao_data: new Date(),
         metas: {
           create: (original.metas || []).map(m => ({
             descricao: m.descricao,
             valor_alvo: m.valor_alvo,
             competencia: m.competencia,
-            data_limite: m.data_limite
+            data_limite: m.data_limite,
+            benchmarking: m.benchmarking,
+            benchmarking_fonte: m.benchmarking_fonte
           }))
         }
       },
@@ -373,7 +387,9 @@ router.put('/:id', async (req, res) => {
       descricao: m.descricao || '',
       valor_alvo: parseFloat(String(m.valor_alvo).replace(',', '.')) || 0,
       competencia: m.competencia || null,
-      data_limite: m.data_limite ? new Date(m.data_limite) : null
+      data_limite: m.data_limite ? new Date(m.data_limite) : null,
+      benchmarking: m.benchmarking !== undefined && m.benchmarking !== null && m.benchmarking !== '' ? parseFloat(String(m.benchmarking).replace(',', '.')) : null,
+      benchmarking_fonte: m.benchmarking_fonte || null
     })) : [];
 
     await prisma.metaIndicador.deleteMany({ where: { indicadorId: id } });
@@ -404,6 +420,11 @@ router.put('/:id', async (req, res) => {
         ordem: data.ordem !== undefined && data.ordem !== '' ? parseInt(data.ordem) : 0,
         tolerancia: data.tolerancia !== undefined && data.tolerancia !== '' ? parseFloat(String(data.tolerancia).replace(',', '.')) : 5,
         historico_sql: JSON.stringify(historicoList),
+        tipo_ona: data.tipo_ona !== undefined ? data.tipo_ona : undefined,
+        dimensao_qualidade: data.dimensao_qualidade !== undefined ? data.dimensao_qualidade : undefined,
+        protocolo_seguranca: data.protocolo_seguranca !== undefined ? data.protocolo_seguranca : undefined,
+        versao_ficha: data.versao_ficha !== undefined && data.versao_ficha !== '' ? parseInt(data.versao_ficha) : undefined,
+        revisao_data: data.revisao_data ? new Date(data.revisao_data) : new Date(),
         metas: {
           create: metasData
         }
@@ -507,7 +528,22 @@ router.get('/:id/planos-acao', async (req, res) => {
 router.post('/:id/planos-acao', async (req, res) => {
   try {
     const indicadorId = parseInt(req.params.id);
-    const { competencia, valor_obtido, meta_esperada, justificativa, plano_acao, responsavel, prazo, status, eficacia, evidencia_eficacia } = req.body;
+    const {
+      competencia, valor_obtido, meta_esperada, justificativa, plano_acao, responsavel, prazo, status, eficacia, evidencia_eficacia,
+      causa_raiz_metodo, ishikawa_6m, cinco_porques,
+      what_acao, why_motivo, where_local, who_responsavel, when_prazo, how_metodo, how_much_custo,
+      nota_g, nota_u, nota_t
+    } = req.body;
+
+    const g = nota_g !== undefined && nota_g !== '' ? parseInt(nota_g) : 3;
+    const u = nota_u !== undefined && nota_u !== '' ? parseInt(nota_u) : 3;
+    const t = nota_t !== undefined && nota_t !== '' ? parseInt(nota_t) : 3;
+    const score_gut = g * u * t;
+
+    const finalPlanoAcao = plano_acao || what_acao || '';
+    const finalResponsavel = responsavel || who_responsavel || '';
+    const finalPrazo = prazo || when_prazo || '';
+
     const novo = await prisma.planoAcaoIndicador.create({
       data: {
         indicadorId,
@@ -515,16 +551,30 @@ router.post('/:id/planos-acao', async (req, res) => {
         valor_obtido: valor_obtido !== undefined && valor_obtido !== '' ? parseFloat(String(valor_obtido).replace(',', '.')) : null,
         meta_esperada: meta_esperada !== undefined && meta_esperada !== '' ? parseFloat(String(meta_esperada).replace(',', '.')) : null,
         justificativa: justificativa || '',
-        plano_acao: plano_acao || '',
-        responsavel: responsavel || '',
-        prazo: prazo || '',
+        plano_acao: finalPlanoAcao,
+        responsavel: finalResponsavel,
+        prazo: finalPrazo,
         status: status || 'PENDENTE',
         eficacia: eficacia || 'PENDENTE',
-        evidencia_eficacia: evidencia_eficacia || null
+        evidencia_eficacia: evidencia_eficacia || null,
+        causa_raiz_metodo: causa_raiz_metodo || null,
+        ishikawa_6m: typeof ishikawa_6m === 'object' ? JSON.stringify(ishikawa_6m) : (ishikawa_6m || null),
+        cinco_porques: typeof cinco_porques === 'object' ? JSON.stringify(cinco_porques) : (cinco_porques || null),
+        what_acao: what_acao || null,
+        why_motivo: why_motivo || null,
+        where_local: where_local || null,
+        who_responsavel: who_responsavel || null,
+        when_prazo: when_prazo || null,
+        how_metodo: how_metodo || null,
+        how_much_custo: how_much_custo || null,
+        nota_g: g,
+        nota_u: u,
+        nota_t: t,
+        score_gut
       },
       include: { indicador: { include: { setor: true } } }
     });
-    await registrarAuditoria(`[SGQ] Plano de Ação registrado para o indicador ID ${indicadorId} (Competência: ${competencia || '-'})`);
+    await registrarAuditoria(`[SGQ] Plano de Ação registrado para o indicador ID ${indicadorId} (Competência: ${competencia || '-'}, GUT: ${score_gut})`);
     res.json(novo);
   } catch (error) {
     console.error(error);
@@ -535,22 +585,50 @@ router.post('/:id/planos-acao', async (req, res) => {
 router.put('/planos-acao/:planoId', async (req, res) => {
   try {
     const id = parseInt(req.params.planoId);
-    const { competencia, status, justificativa, plano_acao, responsavel, prazo, eficacia, evidencia_eficacia } = req.body;
+    const {
+      competencia, status, justificativa, plano_acao, responsavel, prazo, eficacia, evidencia_eficacia,
+      causa_raiz_metodo, ishikawa_6m, cinco_porques,
+      what_acao, why_motivo, where_local, who_responsavel, when_prazo, how_metodo, how_much_custo,
+      nota_g, nota_u, nota_t
+    } = req.body;
+
+    const existing = await prisma.planoAcaoIndicador.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Plano não encontrado' });
+
+    const g = nota_g !== undefined && nota_g !== '' ? parseInt(nota_g) : (existing.nota_g || 3);
+    const u = nota_u !== undefined && nota_u !== '' ? parseInt(nota_u) : (existing.nota_u || 3);
+    const t = nota_t !== undefined && nota_t !== '' ? parseInt(nota_t) : (existing.nota_t || 3);
+    const score_gut = g * u * t;
+
     const atualizado = await prisma.planoAcaoIndicador.update({
       where: { id },
       data: {
         ...(competencia !== undefined ? { competencia } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(justificativa !== undefined ? { justificativa } : {}),
-        ...(plano_acao !== undefined ? { plano_acao } : {}),
-        ...(responsavel !== undefined ? { responsavel } : {}),
-        ...(prazo !== undefined ? { prazo } : {}),
+        ...(plano_acao !== undefined ? { plano_acao } : (what_acao ? { plano_acao: what_acao } : {})),
+        ...(responsavel !== undefined ? { responsavel } : (who_responsavel ? { responsavel: who_responsavel } : {})),
+        ...(prazo !== undefined ? { prazo } : (when_prazo ? { prazo: when_prazo } : {})),
         ...(eficacia !== undefined ? { eficacia } : {}),
-        ...(evidencia_eficacia !== undefined ? { evidencia_eficacia } : {})
+        ...(evidencia_eficacia !== undefined ? { evidencia_eficacia } : {}),
+        ...(causa_raiz_metodo !== undefined ? { causa_raiz_metodo } : {}),
+        ...(ishikawa_6m !== undefined ? { ishikawa_6m: typeof ishikawa_6m === 'object' ? JSON.stringify(ishikawa_6m) : ishikawa_6m } : {}),
+        ...(cinco_porques !== undefined ? { cinco_porques: typeof cinco_porques === 'object' ? JSON.stringify(cinco_porques) : cinco_porques } : {}),
+        ...(what_acao !== undefined ? { what_acao } : {}),
+        ...(why_motivo !== undefined ? { why_motivo } : {}),
+        ...(where_local !== undefined ? { where_local } : {}),
+        ...(who_responsavel !== undefined ? { who_responsavel } : {}),
+        ...(when_prazo !== undefined ? { when_prazo } : {}),
+        ...(how_metodo !== undefined ? { how_metodo } : {}),
+        ...(how_much_custo !== undefined ? { how_much_custo } : {}),
+        nota_g: g,
+        nota_u: u,
+        nota_t: t,
+        score_gut
       },
       include: { indicador: { include: { setor: true } } }
     });
-    await registrarAuditoria(`[SGQ] Plano de Ação ID ${id} atualizado (Status: ${atualizado.status}, Eficácia: ${atualizado.eficacia || 'PENDENTE'})`);
+    await registrarAuditoria(`[SGQ] Plano de Ação ID ${id} atualizado (Status: ${atualizado.status}, Eficácia: ${atualizado.eficacia || 'PENDENTE'}, GUT: ${score_gut})`);
     res.json(atualizado);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar plano de ação' });

@@ -29,7 +29,9 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     categoria: '', subcategoria: '', unidade_medida: '', orientacao: '',
     frequencia: '', setorId: '', peso: '', ordem: 0, tolerancia: 5, ativo: true,
     tipo_consulta: 'SQL', conexaoId: '', query_sql: '', tipo_grafico: 'BAR',
-    coluna_x: '', coluna_y: '', dias_alerta: '', metas: [], historico_sql: null
+    coluna_x: '', coluna_y: '', dias_alerta: '', metas: [], historico_sql: null,
+    tipo_ona: 'PROCESSO', dimensao_qualidade: 'SEGURANCA', protocolo_seguranca: 'NAO_APLICAVEL',
+    versao_ficha: 1, revisao_data: new Date().toISOString().substring(0, 10)
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -109,7 +111,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   const addMeta = () => {
-    setFormData({ ...formData, metas: [...formData.metas, { descricao: '', valor_alvo: '', competencia: '', data_limite: '' }] });
+    setFormData({ ...formData, metas: [...formData.metas, { descricao: '', valor_alvo: '', competencia: '', data_limite: '', benchmarking: '', benchmarking_fonte: '' }] });
   };
 
   const updateMeta = (index, field, value) => {
@@ -250,12 +252,19 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     const formattedMetas = (ind.metas || []).map(m => ({
       ...m,
       competencia: m.competencia || '',
-      data_limite: m.data_limite ? m.data_limite.substring(0, 10) : ''
+      data_limite: m.data_limite ? m.data_limite.substring(0, 10) : '',
+      benchmarking: m.benchmarking !== null && m.benchmarking !== undefined ? m.benchmarking : '',
+      benchmarking_fonte: m.benchmarking_fonte || ''
     }));
     
     setFormData({
       ...initialForm,
       ...ind,
+      tipo_ona: ind.tipo_ona || 'PROCESSO',
+      dimensao_qualidade: ind.dimensao_qualidade || 'SEGURANCA',
+      protocolo_seguranca: ind.protocolo_seguranca || 'NAO_APLICAVEL',
+      versao_ficha: ind.versao_ficha || 1,
+      revisao_data: ind.revisao_data ? ind.revisao_data.substring(0, 10) : new Date().toISOString().substring(0, 10),
       metas: formattedMetas
     });
     setIsFormOpen(true);
@@ -353,6 +362,16 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                       <td style={{ padding: '14px', color: '#334155' }}>{ind.codigo || '-'}</td>
                       <td style={{ padding: '14px', color: '#334155', fontWeight: 'bold' }}>
                         <div>{ind.nome}</div>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: ind.tipo_ona === 'RESULTADO' ? '#dbeafe' : ind.tipo_ona === 'ESTRUTURA' ? '#fef3c7' : '#e0e7ff', color: ind.tipo_ona === 'RESULTADO' ? '#1e40af' : ind.tipo_ona === 'ESTRUTURA' ? '#92400e' : '#3730a3', fontWeight: 600 }}>
+                            {ind.tipo_ona || 'PROCESSO'}
+                          </span>
+                          {ind.dimensao_qualidade && (
+                            <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+                              {ind.dimensao_qualidade}
+                            </span>
+                          )}
+                        </div>
                         {rTest && (
                           <div style={{ fontSize: '0.73rem', marginTop: '3px', fontWeight: 600, color: rTest.status === 'OK' ? '#15803d' : rTest.status === 'ERR' ? '#dc2626' : '#64748b' }}>
                             {rTest.status === 'OK' ? '✅ ' : rTest.status === 'ERR' ? '❌ ' : '⏳ '}{rTest.msg}
@@ -430,10 +449,10 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
         <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>{formData.id ? 'EDITAR REGISTRO' : 'NOVO REGISTRO'}</h2>
       </div>
       <div style={{ background: '#fff', padding: '0', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid #eee', padding: '0 24px', gap: '24px' }}>
-          {['performance', 'extracao', 'metas', 'status'].map(tab => (
-            <div key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '16px 0', cursor: 'pointer', color: activeTab === tab ? '#333' : '#777', fontWeight: activeTab === tab ? '600' : '400', borderBottom: activeTab === tab ? '2px solid #5a67d8' : '2px solid transparent', textTransform: 'capitalize' }}>
-              {tab === 'performance' ? 'Indicadores de Performance' : tab === 'extracao' ? 'Extração Automatizada' : tab}
+        <div style={{ display: 'flex', borderBottom: '1px solid #eee', padding: '0 24px', gap: '20px', flexWrap: 'wrap' }}>
+          {['performance', 'ona', 'extracao', 'metas', 'status'].map(tab => (
+            <div key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '16px 0', cursor: 'pointer', color: activeTab === tab ? '#5a67d8' : '#777', fontWeight: activeTab === tab ? '700' : '400', borderBottom: activeTab === tab ? '3px solid #5a67d8' : '3px solid transparent' }}>
+              {tab === 'performance' ? 'Identificação do Indicador' : tab === 'ona' ? '🏥 Ficha Técnica ONA' : tab === 'extracao' ? 'Extração Automatizada' : tab === 'metas' ? 'Metas & Benchmarking' : 'Status'}
             </div>
           ))}
         </div>
@@ -545,6 +564,84 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Faixa de Tolerância Amarela (%)</label>
                   <input type="number" step="0.5" name="tolerancia" value={formData.tolerancia ?? 5} onChange={handleChange} placeholder="Ex: 5" style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ona' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 6px 0', color: '#1e293b' }}>
+                  🏥 Classificação e Ficha Técnica ONA (Acreditação Hospitalar)
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
+                  Parâmetros fundamentais exigidos pelo Manual Brasileiro de Acreditação Hospitalar (ONA Níveis 1, 2 e 3)
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                    Tipo de Indicador (Tríade Donabedian / ONA)
+                  </label>
+                  <select name="tipo_ona" value={formData.tipo_ona || 'PROCESSO'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                    <option value="ESTRUTURA">ESTRUTURA (Instalações, equipamentos, insumos, recursos humanos)</option>
+                    <option value="PROCESSO">PROCESSO (Atividades assistenciais, adesão a protocolos, conformidades)</option>
+                    <option value="RESULTADO">RESULTADO (Desfechos clínicos, taxas de infecção, mortalidade, satisfação)</option>
+                  </select>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                    A ONA valoriza o alinhamento da tríade Estrutura-Processo-Resultado na gestão por processos.
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                    Dimensão da Qualidade (ONA / OMS)
+                  </label>
+                  <select name="dimensao_qualidade" value={formData.dimensao_qualidade || 'SEGURANCA'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                    <option value="SEGURANCA">Segurança (Prevenção de danos e eventos adversos)</option>
+                    <option value="EFETIVIDADE">Efetividade (Cuidado baseado em evidências e desfecho)</option>
+                    <option value="EFICIENCIA">Eficiência (Otimização de custos, desperdícios e recursos)</option>
+                    <option value="CENTRADO_NO_PACIENTE">Centrado no Paciente (Humanização, respeito às preferências)</option>
+                    <option value="OPORTUNIDADE">Oportunidade (Redução de atrasos e tempos de espera)</option>
+                    <option value="EQUIDADE">Equidade (Assistência uniforme e imparcial)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                  Protocolo Institucional de Segurança do Paciente (Metas Internacionais MS/Anvisa)
+                </label>
+                <select name="protocolo_seguranca" value={formData.protocolo_seguranca || 'NAO_APLICAVEL'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="NAO_APLICAVEL">Não Aplicável / Indicador de Gestão Geral ou Administrativo</option>
+                  <option value="HIGIENE_MAOS">Meta 5: Prática de Higiene das Mãos (Prevenção de IRAS)</option>
+                  <option value="IDENTIFICACAO">Meta 1: Identificação Correta do Paciente</option>
+                  <option value="MEDICACAO">Meta 3: Segurança na Prescrição, Dispensação e Administração de Medicamentos</option>
+                  <option value="CIRURGIA_SEGURA">Meta 4: Cirurgia Segura (Checklist e Time-Out)</option>
+                  <option value="QUEDAS">Meta 6A: Prevenção de Quedas de Pacientes</option>
+                  <option value="LESAO_PRESSAO">Meta 6B: Prevenção de Lesões por Pressão (LPP / Escala de Braden)</option>
+                  <option value="OUTRO">Outro Protocolo Assistencial Institucional</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                    Versão Atual da Ficha Técnica
+                  </label>
+                  <input type="number" min="1" name="versao_ficha" value={formData.versao_ficha || 1} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                    Controle de revisão exigido para rastreabilidade de auditoria documental.
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                    Data da Última Revisão Formal da Ficha
+                  </label>
+                  <input type="date" name="revisao_data" value={formData.revisao_data || ''} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
                 </div>
               </div>
             </div>
@@ -692,22 +789,30 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                 {formData.metas.map((meta, index) => (
                   <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f9f9f9', padding: '12px', borderRadius: '4px', border: '1px solid #eee', flexWrap: 'wrap' }}>
                     <div style={{ flex: 2, minWidth: '160px' }}>
-                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Descrição</label>
+                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Descrição da Meta</label>
                       <input value={meta.descricao} onChange={(e) => updateMeta(index, 'descricao', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <div style={{ flex: 1, minWidth: '120px' }}>
-                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Ano / Competência</label>
+                    <div style={{ flex: 1, minWidth: '110px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Competência</label>
                       <input placeholder="Ex: 2026 ou 10/2026" value={meta.competencia || ''} onChange={(e) => updateMeta(index, 'competencia', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <div style={{ flex: 1, minWidth: '110px' }}>
-                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Valor Alvo</label>
+                    <div style={{ flex: 1, minWidth: '100px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#666', fontWeight: 'bold', color: '#dc2626' }}>Meta (Alvo)</label>
                       <input type="number" value={meta.valor_alvo} onChange={(e) => updateMeta(index, 'valor_alvo', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <div style={{ flex: 1, minWidth: '130px' }}>
+                    <div style={{ flex: 1, minWidth: '120px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 'bold' }}>Benchmarking</label>
+                      <input type="number" placeholder="Ref. Mercado" value={meta.benchmarking ?? ''} onChange={(e) => updateMeta(index, 'benchmarking', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #7c3aed40', background: '#f5f3ff' }} />
+                    </div>
+                    <div style={{ flex: 1.5, minWidth: '140px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Fonte do Benchmark</label>
+                      <input placeholder="Ex: ANAHP / Decit MS" value={meta.benchmarking_fonte || ''} onChange={(e) => updateMeta(index, 'benchmarking_fonte', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '120px' }}>
                       <label style={{ fontSize: '0.75rem', color: '#666' }}>Data Limite</label>
                       <input type="date" value={meta.data_limite} onChange={(e) => updateMeta(index, 'data_limite', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <button onClick={() => removeMeta(index)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', marginTop: '16px' }}>
+                    <button onClick={() => removeMeta(index)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', marginTop: '16px' }} title="Excluir meta">
                       <Trash2 size={18} />
                     </button>
                   </div>

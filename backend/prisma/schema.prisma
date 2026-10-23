@@ -20,6 +20,8 @@ model Setor {
   dashboards Dashboard[] @relation("DashboardSetor")
   layouts DashboardLayout[]
   indicadores Indicador[] @relation("IndicadorSetor")
+  incidentes IncidenteOna[] @relation("IncidenteSetor")
+  fechamentosCiclo FechamentoCicloOna[] @relation("FechamentoCicloSetor")
 }
 
 model Usuario {
@@ -197,10 +199,18 @@ model Indicador {
   ordem          Int?       @default(0)
   tolerancia     Float?     @default(5)
   historico_sql  String?
+
+  // Atributos de Acreditação ONA
+  tipo_ona            String?   @default("PROCESSO") // ESTRUTURA, PROCESSO, RESULTADO
+  dimensao_qualidade  String?   @default("SEGURANCA") // SEGURANCA, EFETIVIDADE, EFICIENCIA, CENTRADO_NO_PACIENTE, OPORTUNIDADE, EQUIDADE
+  protocolo_seguranca String?   @default("NAO_APLICAVEL") // HIGIENE_MAOS, IDENTIFICACAO, MEDICACAO, CIRURGIA_SEGURA, QUEDAS, LESAO_PRESSAO, OUTRO, NAO_APLICAVEL
+  versao_ficha        Int?      @default(1)
+  revisao_data        DateTime?
   
   dashboards     DashboardIndicador[]
   metas          MetaIndicador[]
   planosAcao     PlanoAcaoIndicador[]
+  incidentes     IncidenteOna[]       @relation("IncidenteIndicador")
   cache          CacheIndicador?
 }
 
@@ -227,13 +237,15 @@ model SubcategoriaIndicador {
 }
 
 model MetaIndicador {
-  id            Int       @id @default(autoincrement())
-  indicadorId   Int
-  indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
-  descricao     String
-  valor_alvo    Float
-  competencia   String?
-  data_limite   DateTime?
+  id                 Int       @id @default(autoincrement())
+  indicadorId        Int
+  indicador          Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  descricao          String
+  valor_alvo         Float
+  competencia        String?
+  data_limite        DateTime?
+  benchmarking       Float?
+  benchmarking_fonte String?
 }
 
 model PlanoAcaoIndicador {
@@ -250,6 +262,27 @@ model PlanoAcaoIndicador {
   status             String    @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDO
   eficacia           String?   @default("PENDENTE") // PENDENTE, EFICAZ, INEFICAZ
   evidencia_eficacia String?
+
+  // Análise de Causa Raiz ONA (Ishikawa 6M & 5 Porquês)
+  causa_raiz_metodo  String?   // ISHIKAWA, CINCO_PORQUES, OUTRO
+  ishikawa_6m        String?   // JSON com 6M: metodo, mao_de_obra, material, maquina, meio_ambiente, medida
+  cinco_porques      String?   // JSON com array de perguntas/respostas
+
+  // Padrão 5W2H
+  what_acao          String?   // O que será feito?
+  why_motivo         String?   // Por que será feito?
+  where_local        String?   // Onde será feito?
+  who_responsavel    String?   // Quem fará?
+  when_prazo         String?   // Quando será concluído?
+  how_metodo         String?   // Como será feito?
+  how_much_custo     String?   // Quanto custará? / Recursos
+
+  // Matriz GUT (Gravidade, Urgência, Tendência)
+  nota_g             Int?      @default(3) // 1 a 5
+  nota_u             Int?      @default(3) // 1 a 5
+  nota_t             Int?      @default(3) // 1 a 5
+  score_gut          Int?      @default(27) // G * U * T (1 a 125)
+
   criado_em          DateTime  @default(now())
 }
 
@@ -305,4 +338,40 @@ model FrequenciaApuracao {
   id        Int      @id @default(autoincrement())
   nome      String   @unique
   criado_em DateTime @default(now())
+}
+
+model IncidenteOna {
+  id                    Int        @id @default(autoincrement())
+  numero_protocolo      String     @unique
+  data_incidente        DateTime
+  tipo_evento           String     // NEAR_MISS, SEM_DANO, COM_DANO_LEVE, COM_DANO_MODERADO, COM_DANO_GRAVE, SENTINELA
+  setorId               Int?
+  setor                 Setor?     @relation("IncidenteSetor", fields: [setorId], references: [id])
+  indicadorId           Int?
+  indicador             Indicador? @relation("IncidenteIndicador", fields: [indicadorId], references: [id])
+  protocolo_seguranca   String?    @default("OUTRO") // IDENTIFICACAO, MEDICACAO, CIRURGIA, QUEDA, LESAO_PRESSAO, HIGIENE, OUTRO
+  descricao_evento      String
+  fatores_contribuintes String?
+  acoes_imediatas       String?
+  notificador_nome      String?    // Opcional / Sigiloso
+  status                String     @default("REGISTRADO") // REGISTRADO, EM_INVESTIGACAO, PLANO_IMPLANTADO, CONCLUIDO
+  parecer_conclusivo    String?
+  criado_em             DateTime   @default(now())
+  atualizado_em         DateTime   @updatedAt
+}
+
+model FechamentoCicloOna {
+  id                     Int       @id @default(autoincrement())
+  setorId                Int?
+  setor                  Setor?    @relation("FechamentoCicloSetor", fields: [setorId], references: [id])
+  competencia            String    // Ex: "10/2026", "3T/2026"
+  data_reuniao           DateTime
+  participantes          String?
+  pontos_fortes          String?
+  oportunidades_melhoria String?
+  decisoes_comite        String?
+  status                 String    @default("FECHADO") // ABERTO, FECHADO, APROVADO_DIRETORIA
+  responsavel_ata        String?
+  criado_em              DateTime  @default(now())
+  atualizado_em          DateTime  @updatedAt
 }

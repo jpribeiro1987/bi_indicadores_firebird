@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, Activity, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail, Sparkles, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, Activity, LogOut, Grid, PlusCircle, Moon, Sun, Printer, Mail, Sparkles, ClipboardList, ShieldAlert, FileCheck2 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme }) => {
   const toggleTheme = () => {
@@ -32,6 +32,22 @@ const Sidebar = ({ activeTab, setActiveTab, userRole, onLogout, theme, setTheme 
         >
           <ClipboardList size={20} />
           <span>Planos de Ação (SGQ)</span>
+        </div>
+
+        <div 
+          className={`nav-item ${activeTab === 'incidentes_ona' ? 'active' : ''}`}
+          onClick={() => setActiveTab('incidentes_ona')}
+        >
+          <ShieldAlert size={20} />
+          <span>Incidentes (ONA/NSP)</span>
+        </div>
+
+        <div 
+          className={`nav-item ${activeTab === 'ciclos_ona' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ciclos_ona')}
+        >
+          <FileCheck2 size={20} />
+          <span>Análise Crítica & Ciclos</span>
         </div>
         
         {userRole === 'ADMIN' && (

@@ -3,8 +3,9 @@ import axios from 'axios';
 import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
-import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2, Star, Trophy, Camera } from 'lucide-react';
+import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2, Star, Trophy, Camera, Award } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ModalDossieOna from '../components/ModalDossieOna';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -19,6 +20,7 @@ export default function Dashboards({ userRole, userSectors = [] }) {
   const [selectedSectorId, setSelectedSectorId] = useState('ALL');
   const [availableSectors, setAvailableSectors] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [dossieIndicador, setDossieIndicador] = useState(null);
 
   // Sync progress state
   const [syncProgress, setSyncProgress] = useState({ running: false, current: 0, total: 0, currentIndicator: '' });
@@ -434,6 +436,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         name: 'Meta',
         lineStyle: { color: '#ef4444', type: 'dashed', width: 2 },
         label: { show: true, position: 'end', formatter: 'Meta: {c}' }
+      });
+    }
+    if (activeMeta && activeMeta.benchmarking !== null && activeMeta.benchmarking !== undefined && activeMeta.benchmarking !== '') {
+      markLines.push({
+        yAxis: parseFloat(String(activeMeta.benchmarking).replace(',', '.')),
+        name: 'Benchmarking',
+        lineStyle: { color: '#8b5cf6', type: 'dashDot', width: 2 },
+        label: { show: true, position: 'insideEndTop', formatter: `Bench: {c}${activeMeta.benchmarking_fonte ? ' (' + activeMeta.benchmarking_fonte + ')' : ''}` }
       });
     }
     const markLine = { data: markLines };
@@ -1474,6 +1484,14 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                     </button>
                     <button
                       type="button"
+                      title="Dossiê ONA para Auditoria (Ficha Técnica, Metas, Benchmarking, Planos e Eficácia)"
+                      onClick={() => setDossieIndicador(ind)}
+                      style={{ padding: '4px 6px', background: '#f5f3ff', color: '#7c3aed', border: '1px solid #c4b5fd', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Award size={13} />
+                    </button>
+                    <button
+                      type="button"
                       title="Justificativa / Plano de Ação (SGQ)"
                       onClick={() => openPlanoModal(ind)}
                       style={{ padding: '4px 6px', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -1964,6 +1982,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
             </div>
           </div>
         </div>
+      )}
+      {dossieIndicador && (
+        <ModalDossieOna indicador={dossieIndicador} onClose={() => setDossieIndicador(null)} />
       )}
     </div>
   );

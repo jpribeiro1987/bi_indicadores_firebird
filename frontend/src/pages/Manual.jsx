@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   FileText, LayoutDashboard, ClipboardList, Database, Settings, 
   Activity, Sparkles, Search, CheckCircle2, AlertTriangle, Clock, 
-  Download, Tv, Star, Camera, History, Shield, Mail, ArrowUpDown
+  Download, Tv, Star, Camera, History, Shield, Mail, ArrowUpDown,
+  Award, ShieldAlert, FileCheck2
 } from 'lucide-react';
 
 export default function Manual() {
@@ -15,7 +16,8 @@ export default function Manual() {
     { id: 'sgq', label: '2. Central SGQ (Planos de Ação)' },
     { id: 'construtor', label: '3. Construtor de BI' },
     { id: 'configuracoes', label: '4. Configurações & SMTP' },
-    { id: 'logs', label: '5. Logs & Auditoria' }
+    { id: 'logs', label: '5. Logs & Auditoria' },
+    { id: 'ona', label: '6. Acreditação ONA & Segurança' }
   ];
 
   return (
@@ -238,6 +240,47 @@ export default function Manual() {
               <li><strong>Trilha de Auditoria</strong>: Registra automaticamente criação, edição, clonagem, exclusão de indicadores e abertura de planos de ação SGQ.</li>
               <li><strong>Busca em Tempo Real</strong>: Localize logs pelo nome do indicador, setor ou mensagem de erro.</li>
               <li><strong>Exportar XLS</strong>: Gera relatório em planilha das execuções e eventos de auditoria.</li>
+            </ul>
+          </div>
+        )}
+
+        {/* 6. ACREDITAÇÃO ONA & GESTÃO DA QUALIDADE */}
+        {(activeSection === 'todos' || activeSection === 'ona') && (
+          <div>
+            <h2 style={{ color: '#0284c7', display: 'flex', alignItems: 'center', gap: '8px', marginTop: 0 }}>
+              <Award size={24} color="#0284c7" /> 6. Acreditação ONA & Gestão da Qualidade Hospitalar
+            </h2>
+            <p>
+              O sistema foi integralmente adaptado para atender às exigências do <strong>Manual Brasileiro de Acreditação Hospitalar (ONA Níveis 1, 2 e 3)</strong>:
+            </p>
+
+            <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginTop: '20px' }}>6.1. Ficha Técnica ONA & Governança por Processos</h3>
+            <ul>
+              <li><strong>Tríade Donabedian</strong>: Cada indicador é classificado formalmente em <code>Estrutura</code> (instalações e insumos), <code>Processo</code> (atividades assistenciais e adesão) ou <code>Resultado</code> (desfechos clínicos e eficácia).</li>
+              <li><strong>Dimensões da Qualidade</strong>: Classificação em <em>Segurança, Efetividade, Eficiência, Centrado no Paciente, Oportunidade ou Equidade</em>.</li>
+              <li><strong>Metas Internacionais de Segurança do Paciente (MS/Anvisa)</strong>: Vinculação direta aos protocolos de Higiene das Mãos (Meta 5), Identificação (Meta 1), Medicamentos (Meta 3), Cirurgia Segura (Meta 4), Prevenção de Quedas (Meta 6A) e LPP (Meta 6B).</li>
+              <li><strong>Controle de Versão e Revisão</strong>: Rastreabilidade documental com número de revisão e data formal da última revisão.</li>
+            </ul>
+
+            <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginTop: '20px' }}>6.2. Análise de Causa Raiz Estruturada & Metodologia 5W2H</h3>
+            <ul>
+              <li><strong>Diagrama de Ishikawa (6M)</strong>: Mapeamento causal categorizado em Método, Mão de Obra, Material, Máquina, Meio Ambiente e Medida.</li>
+              <li><strong>Método dos 5 Porquês</strong>: Perguntas sucessivas guiadas para descer da falha superficial até a causa raiz sistêmica.</li>
+              <li><strong>Plano de Ação 5W2H</strong>: Estruturação padronizada contendo What (O quê), Why (Por quê), Where (Onde), Who (Quem), When (Quando), How (Como) e How Much (Quanto custará).</li>
+              <li><strong>Matriz GUT</strong>: Cálculo automático do índice de prioridade <code>Gravidade (1-5) × Urgência (1-5) × Tendência (1-5)</code>, classificando a ação em Crítica (&gt;64), Alta (36-64), Média (16-35) ou Baixa (&lt;16).</li>
+              <li><strong>Ciclo PDCA (Check)</strong>: Avaliação formal de eficácia com comprovação de evidência objetiva.</li>
+            </ul>
+
+            <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginTop: '20px' }}>6.3. Benchmarking de Mercado & Dossiê para Auditoria ONA</h3>
+            <ul>
+              <li><strong>Referencial de Mercado (ONA Nível 3 - Excelência)</strong>: Linha de referência roxa traçada nos gráficos ECharts comparando o desempenho interno contra referências externas (ANAHP, Ministério da Saúde, benchmarks de mercado).</li>
+              <li><strong>Dossiê do Indicador ONA</strong>: Botão de emissão rápida em cada card do dashboard que gera relatório consolidado e padronizado pronto para impressão ou PDF, reunindo ficha técnica, histórico de dados, desvios analisados, planos 5W2H, pareceres de eficácia e campos de assinatura formal.</li>
+            </ul>
+
+            <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem', marginTop: '20px' }}>6.4. Gestão de Incidentes / Near Miss & Análise Crítica da Qualidade</h3>
+            <ul>
+              <li><strong>Módulo de Incidentes (NSP)</strong>: Notificação sigilosa e gestão de Quase Falhas (Near Miss), Incidentes sem dano, Eventos Adversos e Eventos Sentinela com protocolo sequencial e plano de ação imediato.</li>
+              <li><strong>Módulo de Fechamento de Ciclo</strong>: Atas formais de reuniões periódicas do Comitê de Qualidade registrando pontos fortes, oportunidades de melhoria e deliberações da alta direção.</li>
             </ul>
           </div>
         )}

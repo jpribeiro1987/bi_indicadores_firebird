@@ -16,6 +16,8 @@ import Relatorios from './pages/Relatorios';
 
 import Dashboards from './pages/Dashboards';
 import ConstrutorIndicadores from './pages/ConstrutorIndicadores';
+import GestaoIncidentes from './pages/GestaoIncidentes';
+import FechamentoCiclo from './pages/FechamentoCiclo';
 import './index.css';
 
 function App() {
@@ -68,6 +70,8 @@ function App() {
         {activeTab === 'dashboard' && <Dashboard userRole={userRole} userSector={userSector} />}
         {activeTab === 'dashboards' && <Dashboards userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'planos_acao' && <PlanosAcao userRole={userRole} userSectors={userSectorsIds} />}
+        {activeTab === 'incidentes_ona' && <GestaoIncidentes userRole={userRole} userSectors={userSectorsIds} />}
+        {activeTab === 'ciclos_ona' && <FechamentoCiclo userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'construtor' && <ConstrutorIndicadores userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'novo_contrato' && <NovoContrato />}
         {activeTab === 'configuracoes' && <Configuracoes />}
