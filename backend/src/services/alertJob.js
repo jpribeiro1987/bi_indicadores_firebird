@@ -54,6 +54,7 @@ async function syncBiData(tipo = 'AUTOMATICO', setorId = null) {
       const indicadores = await prisma.indicador.findMany({ where: whereClause });
       syncProgress.total = indicadores.length;
 
+      const syncStartMs = Date.now();
       let falhos = [];
       for (let i = 0; i < indicadores.length; i++) {
         const ind = indicadores[i];
@@ -70,7 +71,8 @@ async function syncBiData(tipo = 'AUTOMATICO', setorId = null) {
           falhos.push(ind.nome);
         }
       }
-      detalhes = prefixoSetor + (falhos.length > 0 ? falhos.length + ' indicadores falharam: ' + falhos.join(', ') : `Todos atualizados com sucesso (${indicadores.length} indicadores)`);
+      const totalSec = ((Date.now() - syncStartMs) / 1000).toFixed(1);
+      detalhes = prefixoSetor + (falhos.length > 0 ? `${falhos.length} indicadores falharam (${totalSec}s): ` + falhos.join(', ') : `Todos atualizados com sucesso (${indicadores.length} indicadores em ${totalSec}s)`);
       sucesso = falhos.length === 0;
     }
   } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database, Copy } from 'lucide-react';
+import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database, Copy, Download, Upload } from 'lucide-react';
 import ModalGerenciarCategorias from '../components/ModalGerenciarCategorias';
 import ModalUnidadeMedida from '../components/ModalUnidadeMedida';
 import ModalFrequenciaApuracao from '../components/ModalFrequenciaApuracao';
@@ -31,6 +31,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
 
   const [formData, setFormData] = useState(initialForm);
   const [testResult, setTestResult] = useState(null);
+  const [testDurationMs, setTestDurationMs] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -119,14 +120,51 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   const testarQuery = async () => {
-    setLoading(true); setError(null); setTestResult(null);
+    setLoading(true); setError(null); setTestResult(null); setTestDurationMs(null);
+    const t0 = Date.now();
     try {
       const res = await axios.post('/api/indicadores/testar', { query_sql: formData.query_sql, conexaoId: formData.conexaoId });
+      const headerMs = res.headers && res.headers['x-query-duration-ms'];
+      setTestDurationMs(headerMs ? parseInt(headerMs, 10) : (Date.now() - t0));
       setTestResult(res.data);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportarBackupJson = async () => {
+    try {
+      const res = await axios.get('/api/indicadores/exportar-json');
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_indicadores_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Erro ao exportar backup de indicadores.');
+    }
+  };
+
+  const importarBackupJson = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const lista = Array.isArray(parsed) ? parsed : parsed.indicadores;
+      if (!Array.isArray(lista)) return alert('Arquivo JSON inválido.');
+      if (!window.confirm(`Deseja importar ${lista.length} indicador(es) do arquivo selecionado?`)) return;
+      const res = await axios.post('/api/indicadores/importar-json', { indicadores: lista });
+      alert(`${res.data.importados} indicador(es) importado(s) com sucesso!`);
+      fetchIndicadores();
+    } catch (err) {
+      alert('Erro ao importar arquivo JSON: ' + (err.response?.data?.error || err.message));
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -202,7 +240,14 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Crie e gerencie indicadores personalizados</p>
             </div>
             
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button onClick={exportarBackupJson} title="Exportar backup de todos os indicadores em JSON" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer' }}>
+                <Download size={16} /> Exportar JSON
+              </button>
+              <label title="Importar indicadores de um arquivo JSON" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer' }}>
+                <Upload size={16} /> Importar JSON
+                <input type="file" accept=".json" onChange={importarBackupJson} style={{ display: 'none' }} />
+              </label>
               <button onClick={() => setShowBIModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', cursor: 'pointer' }}>
                 <Database size={16} /> Conexão BI
               </button>
@@ -456,7 +501,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               {testResult && (
                 <div style={{ marginTop: '16px', padding: '16px', background: '#f5f5f5', borderRadius: '8px', border: '1px solid #ddd' }}>
                   <div style={{ color: 'green', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <CheckCircle2 size={18} /> Executado com sucesso ({testResult.length} registros)
+                    <CheckCircle2 size={18} /> Executado com sucesso ({testResult.length} registros{testDurationMs !== null ? ` em ${(testDurationMs / 1000).toFixed(2)}s` : ''})
                   </div>
                   <pre style={{ margin: 0, overflow: 'auto', maxHeight: '200px', fontSize: '0.85rem', color: '#333' }}>{JSON.stringify(testResult, null, 2)}</pre>
                 </div>

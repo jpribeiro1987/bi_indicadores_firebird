@@ -3,10 +3,48 @@ import { Sparkles, CheckCircle2, Calendar, Tag, Search } from 'lucide-react';
 
 const UPDATES_HISTORY = [
   {
+    versao: 'v2.6.0',
+    data: '23/10/2026',
+    titulo: 'Central SGQ, Farol Ponderado do Setor, Tendência %, Linha de Média, Zoom em Tela Cheia, Backup JSON e Auditoria',
+    destaque: true,
+    itens: [
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Farol Geral de Desempenho do Setor (Scorecard Ponderado)',
+        descricao: 'Adicionada barra executiva no topo do Dashboard contabilizando indicadores Dentro da Meta (🟢), Fora da Meta (🔴), Sem Meta (⚪) e o Índice de Atingimento Ponderado (%) do setor com base no peso de cada indicador.'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Indicador de Tendência (▲ / ▼ %) e Linha de Média Histórica nos Gráficos',
+        descricao: 'Exibição automática da variação percentual entre os dois últimos períodos nos cards (colorida conforme Maior/Menor Melhor) e adição da Linha de Média Histórica (pontilhada azul) junto à linha de Meta.'
+      },
+      {
+        categoria: 'Dashboards',
+        titulo: 'Atalhos Rápidos de Período (1-Clique) e Modo Expandir Gráfico (Zoom)',
+        descricao: 'Botões rápidos de período (Mês, Trim, Sem, Ano, 12M) na barra de filtros do Dashboard e botão de Maximizar (⛶) em cada card para inspecionar gráficos ou tabelas extensas em tela cheia.'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Central de Planos de Ação (Nova Aba SGQ)',
+        descricao: 'Nova tela dedicada à Gestão da Qualidade consolidando todos os Planos de Ação e Análises Críticas de todos os setores, com contadores de Prazo Vencido, filtros por setor/status/competência, atualização rápida de status e exportação XLS.'
+      },
+      {
+        categoria: 'Construtor de BI',
+        titulo: 'Backup / Importação de Indicadores em JSON e Tempo de Execução SQL',
+        descricao: 'Exportação e importação em lote de definições de indicadores (.json) para backup ou migração, além de medição em segundos da duração de cada consulta SQL no botão "Testar Query" e nos Logs.'
+      },
+      {
+        categoria: 'Logs & Sincronização',
+        titulo: 'Trilha de Auditoria de Alterações',
+        descricao: 'Registro automático de criação, edição, clonagem, exclusão, importação de indicadores e abertura de planos de ação nos Logs do sistema com identificação do usuário.'
+      }
+    ]
+  },
+  {
     versao: 'v2.5.0',
     data: '23/10/2026',
     titulo: 'Plano de Ação SGQ, Modo TV, Semáforo de Metas, Progresso em Tempo Real e Exportação Multi-Abas',
-    destaque: true,
+    destaque: false,
     itens: [
       {
         categoria: 'Dashboards & Metas',

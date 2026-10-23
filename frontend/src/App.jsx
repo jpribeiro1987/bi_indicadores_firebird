@@ -11,6 +11,7 @@ import Configuracoes from './pages/Configuracoes';
 import Logs from './pages/Logs';
 import Manual from './pages/Manual';
 import Atualizacoes from './pages/Atualizacoes';
+import PlanosAcao from './pages/PlanosAcao';
 import Relatorios from './pages/Relatorios';
 
 import Dashboards from './pages/Dashboards';
@@ -66,6 +67,7 @@ function App() {
       <main className="main-content">
         {activeTab === 'dashboard' && <Dashboard userRole={userRole} userSector={userSector} />}
         {activeTab === 'dashboards' && <Dashboards userRole={userRole} userSectors={userSectorsIds} />}
+        {activeTab === 'planos_acao' && <PlanosAcao userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'construtor' && <ConstrutorIndicadores userRole={userRole} userSectors={userSectorsIds} />}
         {activeTab === 'novo_contrato' && <NovoContrato />}
         {activeTab === 'configuracoes' && <Configuracoes />}

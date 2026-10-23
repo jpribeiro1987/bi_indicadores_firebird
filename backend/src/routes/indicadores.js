@@ -5,6 +5,125 @@ const { prepareQuery } = require('../services/firebirdService');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+async function registrarAuditoria(detalhes) {
+  try {
+    await prisma.logSincronizacao.create({
+      data: {
+        tipo: 'AUDITORIA',
+        sucesso: true,
+        detalhes: detalhes.substring(0, 2000)
+      }
+    });
+  } catch (e) {}
+}
+
+// Listar todos os planos de ação (Central SGQ)
+router.get('/planos-acao/todos', async (req, res) => {
+  try {
+    const planos = await prisma.planoAcaoIndicador.findMany({
+      include: {
+        indicador: {
+          include: { setor: true }
+        }
+      },
+      orderBy: { criado_em: 'desc' }
+    });
+    res.json(planos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar central de planos de ação' });
+  }
+});
+
+// Exportar backup de todos os indicadores em JSON
+router.get('/exportar-json', async (req, res) => {
+  try {
+    const indicadores = await prisma.indicador.findMany({
+      include: { metas: true, setor: true },
+      orderBy: { id: 'asc' }
+    });
+    res.json(indicadores);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao exportar indicadores' });
+  }
+});
+
+// Importar backup de indicadores via JSON
+router.post('/importar-json', async (req, res) => {
+  try {
+    const { indicadores } = req.body;
+    if (!Array.isArray(indicadores)) {
+      return res.status(400).json({ error: 'Formato de arquivo inválido.' });
+    }
+
+    let defaultDash = await prisma.dashboard.findFirst({ where: { nome: 'Painel Geral' } });
+    if (!defaultDash) {
+      defaultDash = await prisma.dashboard.create({ data: { nome: 'Painel Geral' } });
+    }
+
+    let importados = 0;
+    for (const item of indicadores) {
+      if (!item.nome || !item.query_sql) continue;
+      const metasData = Array.isArray(item.metas) ? item.metas.map(m => ({
+        descricao: m.descricao || '',
+        valor_alvo: parseFloat(String(m.valor_alvo).replace(',', '.')) || 0,
+        competencia: m.competencia || null,
+        data_limite: m.data_limite ? new Date(m.data_limite) : null
+      })) : [];
+
+      const novo = await prisma.indicador.create({
+        data: {
+          codigo: item.codigo || '',
+          nome: item.nome,
+          descricao: item.descricao || '',
+          desc_formula: item.desc_formula || '',
+          fonte_referencia: item.fonte_referencia || '',
+          categoria: item.categoria || '',
+          subcategoria: item.subcategoria || '',
+          unidade_medida: item.unidade_medida || '',
+          orientacao: item.orientacao || '',
+          frequencia: item.frequencia || '',
+          setorId: item.setorId ? parseInt(item.setorId) : null,
+          peso: item.peso ? parseFloat(item.peso) : null,
+          ativo: item.ativo !== undefined ? item.ativo : true,
+          tipo_consulta: item.tipo_consulta || 'SQL',
+          conexaoId: item.conexaoId ? parseInt(item.conexaoId) : null,
+          query_sql: item.query_sql,
+          tipo_grafico: item.tipo_grafico || 'BAR',
+          coluna_x: item.coluna_x || '',
+          coluna_y: item.coluna_y || '',
+          dias_alerta: item.dias_alerta ? parseInt(item.dias_alerta) : null,
+          metas: { create: metasData }
+        }
+      });
+
+      const lastItem = await prisma.dashboardIndicador.findFirst({
+        where: { dashboardId: defaultDash.id },
+        orderBy: { pos_y: 'desc' }
+      });
+      const newY = lastItem ? lastItem.pos_y + lastItem.altura : 0;
+
+      await prisma.dashboardIndicador.create({
+        data: {
+          dashboardId: defaultDash.id,
+          indicadorId: novo.id,
+          pos_x: 0,
+          pos_y: newY,
+          largura: 6,
+          altura: 12
+        }
+      });
+      importados++;
+    }
+
+    await registrarAuditoria(`[Backup JSON] ${importados} indicador(es) importado(s) com sucesso.`);
+    res.json({ success: true, importados });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao importar indicadores: ' + error.message });
+  }
+});
+
 // Listar todos os indicadores
 router.get('/', async (req, res) => {
   try {
@@ -22,8 +141,11 @@ router.get('/', async (req, res) => {
 // Deletar indicador
 router.delete('/:id', async (req, res) => {
   try {
-    await prisma.dashboardIndicador.deleteMany({ where: { indicadorId: parseInt(req.params.id) } });
-    await prisma.indicador.delete({ where: { id: parseInt(req.params.id) } });
+    const id = parseInt(req.params.id);
+    const ind = await prisma.indicador.findUnique({ where: { id } });
+    await prisma.dashboardIndicador.deleteMany({ where: { indicadorId: id } });
+    await prisma.indicador.delete({ where: { id } });
+    await registrarAuditoria(`[Auditoria] Indicador excluído: "${ind ? ind.nome : id}"`);
     res.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -95,6 +217,7 @@ router.post('/', async (req, res) => {
       }
     });
 
+    await registrarAuditoria(`[Auditoria] Novo indicador criado: "${indicador.nome}" (Código: ${indicador.codigo || '-'})`);
     res.json(indicador);
   } catch (error) {
     console.error(error);
@@ -167,6 +290,7 @@ router.post('/:id/duplicar', async (req, res) => {
       }
     });
 
+    await registrarAuditoria(`[Auditoria] Indicador duplicado: "${original.nome}" -> "${clone.nome}"`);
     res.json(clone);
   } catch (error) {
     console.error(error);
@@ -218,6 +342,7 @@ router.put('/:id', async (req, res) => {
       },
       include: { metas: true }
     });
+    await registrarAuditoria(`[Auditoria] Indicador editado: "${indicador.nome}" (ID: ${indicador.id})`);
     res.json(indicador);
   } catch (error) {
     console.error(error);
@@ -225,9 +350,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Testar query (retorna dados em JSON)
+// Testar query (retorna dados em JSON + tempo de execução no header)
 router.post('/testar', async (req, res) => {
   try {
+    const startMs = Date.now();
     const { query_sql, conexaoId, startDate, endDate } = req.body;
     const safeSql = prepareQuery(query_sql, { startDate, endDate });
     
@@ -241,6 +367,8 @@ router.post('/testar', async (req, res) => {
     if (!conexao) return res.status(404).json({ error: 'Nenhuma conexão com banco SPDATA cadastrada.' });
 
     const result = await executeWithCache(conexao, safeSql, 60, { startDate, endDate });
+    const durationMs = Date.now() - startMs;
+    res.set('x-query-duration-ms', String(durationMs));
     res.json(result);
   } catch (error) {
     console.error(error);
@@ -323,6 +451,7 @@ router.post('/:id/planos-acao', async (req, res) => {
         status: status || 'PENDENTE'
       }
     });
+    await registrarAuditoria(`[SGQ] Plano de Ação registrado para o indicador ID ${indicadorId} (Competência: ${competencia || '-'})`);
     res.json(novo);
   } catch (error) {
     console.error(error);

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Responsive as ResponsiveGridLayout, WidthProvider } from 'react-grid-layout/legacy';
 const ResponsiveGridLayoutWithWidth = WidthProvider(ResponsiveGridLayout);
 import ReactECharts from 'echarts-for-react';
-import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2 } from 'lucide-react';
+import { Save, Download, RefreshCw, Info, ClipboardList, Tv, FileSpreadsheet, Mail, ArrowUpDown, Search, Trash2, CheckCircle2, Maximize2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -29,6 +29,9 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   // Ficha Técnica Modal
   const [fichaIndicador, setFichaIndicador] = useState(null);
+
+  // Expanded Indicator (Zoom / Full-screen chart/table)
+  const [expandedIndicador, setExpandedIndicador] = useState(null);
 
   // Plano de Ação Modal
   const [planoIndicador, setPlanoIndicador] = useState(null);
@@ -57,6 +60,25 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
   const [startDate, setStartDate] = useState(getDefaultStartDate());
   const [endDate, setEndDate] = useState(getDefaultEndDate());
+
+  const applyDatePreset = (preset) => {
+    const now = new Date();
+    const endStr = now.toISOString().split('T')[0];
+    let start = new Date();
+    if (preset === 'MES') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (preset === 'TRIMESTRE') {
+      start.setMonth(now.getMonth() - 3);
+    } else if (preset === 'SEMESTRE') {
+      start.setMonth(now.getMonth() - 6);
+    } else if (preset === 'ANO') {
+      start = new Date(now.getFullYear(), 0, 1);
+    } else if (preset === '12M') {
+      start.setFullYear(now.getFullYear() - 1);
+    }
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(endStr);
+  };
 
   const getVal = (item, colName) => {
     if (!colName || !item) return undefined;
@@ -342,14 +364,23 @@ export default function Dashboards({ userRole, userSectors = [] }) {
     const data = filteredData || result.data;
     const activeMeta = getActiveMeta(indicador);
 
-    let markLine = undefined;
+    const markLines = [
+      {
+        type: 'average',
+        name: 'Média',
+        lineStyle: { color: '#3b82f6', type: 'dotted', width: 2 },
+        label: { show: true, position: 'start', formatter: 'Média: {c}' }
+      }
+    ];
     if (activeMeta && activeMeta.valor_alvo !== null && activeMeta.valor_alvo !== undefined) {
-      markLine = {
-        data: [{ yAxis: parseFloat(String(activeMeta.valor_alvo).replace(',', '.')), name: 'Meta' }],
+      markLines.push({
+        yAxis: parseFloat(String(activeMeta.valor_alvo).replace(',', '.')),
+        name: 'Meta',
         lineStyle: { color: '#ef4444', type: 'dashed', width: 2 },
         label: { show: true, position: 'end', formatter: 'Meta: {c}' }
-      };
+      });
     }
+    const markLine = { data: markLines };
 
     const xAxisData = data.map(item => {
       let val = getVal(item, config.coluna_x);
@@ -715,11 +746,29 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.8rem' }}>Dashboards</h1>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }} className="no-print">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--panel-bg)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--panel-bg)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>De:</span>
              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', color: 'var(--text-main)', outline: 'none' }} />
              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Até:</span>
              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', color: 'var(--text-main)', outline: 'none' }} />
+             <div style={{ display: 'flex', gap: '4px', borderLeft: '1px solid var(--border)', paddingLeft: '8px' }}>
+               {[
+                 { id: 'MES', label: 'Mês' },
+                 { id: 'TRIMESTRE', label: 'Trim' },
+                 { id: 'SEMESTRE', label: 'Sem' },
+                 { id: 'ANO', label: 'Ano' },
+                 { id: '12M', label: '12M' }
+               ].map(p => (
+                 <button
+                   key={p.id}
+                   type="button"
+                   onClick={() => applyDatePreset(p.id)}
+                   style={{ padding: '2px 6px', fontSize: '0.72rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600 }}
+                 >
+                   {p.label}
+                 </button>
+               ))}
+             </div>
           </div>
 
           <select 
@@ -784,6 +833,67 @@ export default function Dashboards({ userRole, userSectors = [] }) {
 
       {activeDash && layout.length > 0 && (
         <>
+        {/* Farol Geral de Desempenho do Setor (Scorecard) */}
+        {(() => {
+          let dentroMeta = 0;
+          let foraMeta = 0;
+          let semMeta = 0;
+          let somaPesos = 0;
+          let somaPesosAtingidos = 0;
+
+          for (const di of activeDash.indicadores) {
+            const ind = di.indicador;
+            const res = indicatorData[ind.id];
+            const activeMeta = getActiveMeta(ind);
+            const peso = ind.peso && ind.peso > 0 ? ind.peso : 1;
+
+            if (!activeMeta || activeMeta.valor_alvo === null || activeMeta.valor_alvo === undefined || !ind.orientacao) {
+              semMeta++;
+              continue;
+            }
+            if (!res || !res.data) continue;
+            const series = filterByDate(res.data, ind.coluna_x, startDate, endDate);
+            if (!series || series.length === 0) continue;
+
+            const lastItem = series[series.length - 1];
+            const rawVal = getVal(lastItem, ind.coluna_y);
+            const color = evaluateTargetColor(ind, rawVal, 'neutral');
+            if (color === '#10b981') {
+              dentroMeta++;
+              somaPesos += peso;
+              somaPesosAtingidos += peso;
+            } else if (color === '#ef4444') {
+              foraMeta++;
+              somaPesos += peso;
+            } else {
+              semMeta++;
+            }
+          }
+
+          const pctAtingimento = somaPesos > 0 ? Math.round((somaPesosAtingidos / somaPesos) * 100) : null;
+
+          return (
+            <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid #10b98140', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🟢 Dentro da Meta</span>
+                <strong style={{ fontSize: '1.3rem', color: '#10b981' }}>{dentroMeta}</strong>
+              </div>
+              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid #ef444440', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🔴 Fora da Meta</span>
+                <strong style={{ fontSize: '1.3rem', color: '#ef4444' }}>{foraMeta}</strong>
+              </div>
+              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>⚪ Sem Meta</span>
+                <strong style={{ fontSize: '1.3rem', color: 'var(--text-main)' }}>{semMeta}</strong>
+              </div>
+              <div style={{ background: 'var(--panel-bg)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>🎯 Atingimento Ponderado</span>
+                <strong style={{ fontSize: '1.3rem', color: 'var(--primary)' }}>{pctAtingimento !== null ? `${pctAtingimento}%` : '-'}</strong>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="print-only">
           Painel de Indicadores - {selectedSectorId === 'ALL' ? 'Todos os Setores' : (availableSectors.find(s => s.id === parseInt(selectedSectorId))?.nome || 'Setor')}
         </div>
@@ -828,18 +938,50 @@ export default function Dashboards({ userRole, userSectors = [] }) {
               ? Object.keys((tableRows && tableRows[0]) || res.data[0])
               : [];
 
+            // Calculate Trend Variation (% vs previous period)
+            let trendBadge = null;
+            if (filteredData && filteredData.length >= 2 && ind.coluna_y && ind.tipo_grafico !== 'TABLE') {
+              const lastRaw = getVal(filteredData[filteredData.length - 1], ind.coluna_y);
+              const prevRaw = getVal(filteredData[filteredData.length - 2], ind.coluna_y);
+              const vLast = typeof lastRaw === 'string' ? parseFloat(lastRaw.replace(',', '.')) : lastRaw;
+              const vPrev = typeof prevRaw === 'string' ? parseFloat(prevRaw.replace(',', '.')) : prevRaw;
+              if (typeof vLast === 'number' && typeof vPrev === 'number' && !isNaN(vLast) && !isNaN(vPrev) && vPrev !== 0) {
+                const diffPct = ((vLast - vPrev) / Math.abs(vPrev)) * 100;
+                const isUp = diffPct >= 0;
+                let badgeColor = '#64748b';
+                if (ind.orientacao === 'Maior Melhor') badgeColor = isUp ? '#10b981' : '#ef4444';
+                if (ind.orientacao === 'Menor Melhor') badgeColor = isUp ? '#ef4444' : '#10b981';
+                trendBadge = (
+                  <span title="Variação em relação ao período imediatamente anterior" style={{ marginLeft: '6px', fontSize: '0.7rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: `${badgeColor}18`, color: badgeColor }}>
+                    {isUp ? '▲' : '▼'} {diffPct > 0 ? '+' : ''}{diffPct.toFixed(1)}%
+                  </span>
+                );
+              }
+            }
+
             return (
               <div key={ind.id.toString()} data-grid={layout.find(l => l.i === ind.id.toString()) || { x: 0, y: 0, w: 6, h: 12, minW: 3, minH: 6 }} style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '12px' }}>
                   <div style={{ flex: 1 }}>
                     <h4 style={{ margin: 0, color: 'var(--text-main)' }}>{ind.nome}</h4>
-                    {activeMeta && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Meta: <strong>{activeMeta.valor_alvo} {ind.unidade_medida || ''}</strong> {ind.orientacao ? `(${ind.orientacao})` : ''}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: '2px' }}>
+                      {activeMeta && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Meta: <strong>{activeMeta.valor_alvo} {ind.unidade_medida || ''}</strong> {ind.orientacao ? `(${ind.orientacao})` : ''}
+                        </span>
+                      )}
+                      {trendBadge}
+                    </div>
                   </div>
                   <div className="no-print" onMouseDown={e => e.stopPropagation()} style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      title="Expandir Gráfico / Tabela em Tela Cheia"
+                      onClick={() => setExpandedIndicador(ind)}
+                      style={{ padding: '4px 6px', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Maximize2 size={13} />
+                    </button>
                     <button
                       type="button"
                       title="Ficha Técnica do Indicador (Fórmula, Fonte, Metas)"
@@ -1146,6 +1288,64 @@ export default function Dashboards({ userRole, userSectors = [] }) {
               <button onClick={() => setPlanoIndicador(null)} style={{ padding: '8px 18px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Expandir Gráfico / Tabela (Zoom em Tela Cheia) */}
+      {expandedIndicador && indicatorData[expandedIndicador.id] && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', padding: '24px', borderRadius: '12px', width: '92vw', height: '86vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{expandedIndicador.nome}</h2>
+                {expandedIndicador.descricao && <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{expandedIndicador.descricao}</p>}
+              </div>
+              <button onClick={() => setExpandedIndicador(null)} style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                ✕ Fechar
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {(() => {
+                const resExp = indicatorData[expandedIndicador.id];
+                const filtExp = filterByDate(resExp.data, expandedIndicador.coluna_x, startDate, endDate) || [];
+                if (expandedIndicador.tipo_grafico === 'TABLE') {
+                  const colsExp = filtExp[0] ? Object.keys(filtExp[0]) : [];
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.92rem' }}>
+                      <thead style={{ position: 'sticky', top: 0, background: 'var(--panel-bg)', borderBottom: '2px solid var(--border)' }}>
+                        <tr>
+                          {colsExp.map((k, i) => <th key={i} style={{ padding: '10px', textAlign: 'left' }}>{k.toUpperCase()}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtExp.map((row, rIdx) => (
+                          <tr key={rIdx} style={{ borderBottom: '1px solid var(--border)' }}>
+                            {colsExp.map((cKey, cIdx) => {
+                              const val = row[cKey];
+                              return (
+                                <td key={cIdx} style={{ padding: '10px' }}>
+                                  {typeof val === 'number' ? val.toLocaleString('pt-BR') :
+                                   (typeof val === 'string' && val.includes('T') && val.endsWith('Z')) ? val.substring(0, 10).split('-').reverse().join('/') :
+                                   String(val ?? '')}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                return (
+                  <ReactECharts
+                    option={getOption(expandedIndicador, resExp, filtExp)}
+                    style={{ height: '100%', width: '100%' }}
+                    opts={{ renderer: 'svg' }}
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>
