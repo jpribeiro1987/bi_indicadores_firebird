@@ -12,4 +12,4 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push && node src/app.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx prisma generate && node src/app.js"]

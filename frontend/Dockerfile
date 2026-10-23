@@ -10,9 +10,13 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-# Add custom nginx config to support React Router SPA fallback
+# Add custom nginx config to support React Router SPA fallback and prevent stale index.html cache
 RUN echo 'server { \
     listen 80; \
+    location = /index.html { \
+        root /usr/share/nginx/html; \
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"; \
+    } \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \
