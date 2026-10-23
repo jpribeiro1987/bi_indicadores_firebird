@@ -9,6 +9,11 @@ const UPDATES_HISTORY = [
     destaque: true,
     itens: [
       {
+        categoria: 'Logs & Sincronização',
+        titulo: 'Aumento do Timeout de Consultas SQL para 120 Segundos',
+        descricao: 'Ampliado o tempo limite de execução de consultas SQL no Firebird (e no proxy Nginx) de 30 segundos para 120 segundos, evitando cancelamentos em queries mais pesadas.'
+      },
+      {
         categoria: 'Dashboards',
         titulo: 'Atualização imediata apenas do Setor selecionado',
         descricao: 'Ao selecionar um setor específico no filtro do Dashboard e clicar em "Atualizar Agora", o sistema sincroniza no Firebird exclusivamente os indicadores daquele setor, reduzindo drasticamente o tempo de espera e registrando o setor no Log de Sincronização.'

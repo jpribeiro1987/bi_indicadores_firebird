@@ -33,7 +33,7 @@ function prepareQuery(sql) {
 /**
  * Executa a query no Firebird com timeout
  */
-function executeQuery(conexao, sql, timeoutMs = 30000) {
+function executeQuery(conexao, sql, timeoutMs = 120000) {
   return new Promise((resolve, reject) => {
     try {
       const safeSql = prepareQuery(sql);

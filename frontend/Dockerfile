@@ -22,6 +22,9 @@ RUN echo 'server { \
         proxy_pass http://backend:3000/api/; \
         proxy_set_header Host $host; \
         proxy_set_header X-Real-IP $remote_addr; \
+        proxy_read_timeout 120s; \
+        proxy_connect_timeout 120s; \
+        proxy_send_timeout 120s; \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
