@@ -2,10 +2,20 @@ const Firebird = require('node-firebird');
 
 const FORBIDDEN_WORDS = ['UPDATE', 'DELETE', 'INSERT', 'DROP', 'EXECUTE', 'COMMIT', 'ALTER', 'CREATE'];
 
+function getDefaultDates() {
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 1);
+  return {
+    startDate: start.toISOString().split('T')[0],
+    endDate: end.toISOString().split('T')[0]
+  };
+}
+
 /**
- * Filtro Anti-Injeção e Paginação
+ * Filtro Anti-Injeção, Parâmetros Dinâmicos (:DATA_INICIO, :DATA_FIM) e Paginação
  */
-function prepareQuery(sql) {
+function prepareQuery(sql, params = {}) {
   // Remove comentários (-- e /* */) apenas para a validação
   const cleanSql = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
   let upperSql = cleanSql.toUpperCase().trim();
@@ -20,10 +30,17 @@ function prepareQuery(sql) {
     }
   }
 
+  // Substituição segura de parâmetros dinâmicos :DATA_INICIO e :DATA_FIM
+  const defaults = getDefaultDates();
+  const rawStart = params.startDate && /^\d{4}-\d{2}-\d{2}$/.test(params.startDate) ? params.startDate : defaults.startDate;
+  const rawEnd = params.endDate && /^\d{4}-\d{2}-\d{2}$/.test(params.endDate) ? params.endDate : defaults.endDate;
+
+  sql = sql.replace(/:DATA_INICIO\b/gi, `'${rawStart}'`);
+  sql = sql.replace(/:DATA_FIM\b/gi, `'${rawEnd}'`);
+
   // Verifica se já existe paginação
   if (!upperSql.match(/\bFIRST\b/) && !upperSql.match(/\bROWS\b/)) {
     // Injeta FIRST 1000
-    // Usamos expressão regular para pegar o SELECT, mesmo que tenha espaços
     sql = sql.replace(/^(\s*SELECT\s+)(.*)/is, '$1FIRST 1000 $2');
   }
 
@@ -31,12 +48,12 @@ function prepareQuery(sql) {
 }
 
 /**
- * Executa a query no Firebird com timeout
+ * Executa a query no Firebird com timeout (120s padrão)
  */
-function executeQuery(conexao, sql, timeoutMs = 120000) {
+function executeQuery(conexao, sql, timeoutMs = 120000, params = {}) {
   return new Promise((resolve, reject) => {
     try {
-      const safeSql = prepareQuery(sql);
+      const safeSql = prepareQuery(sql, params);
       
       const options = {
         host: conexao.host,

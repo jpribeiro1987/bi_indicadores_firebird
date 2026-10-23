@@ -1,6 +1,6 @@
 const redis = require('redis');
 const crypto = require('crypto');
-const { executeQuery } = require('./firebirdService');
+const { executeQuery, prepareQuery } = require('./firebirdService');
 
 const client = redis.createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379'
@@ -22,21 +22,23 @@ function generateHash(conexao, sql) {
 /**
  * Executa SQL via Cache ou Firebird
  */
-async function executeWithCache(conexao, sql, ttlSeconds = 1800) { // Default 30 min
-  const cacheKey = `query:${generateHash(conexao, sql)}`;
+async function executeWithCache(conexao, sql, ttlSeconds = 1800, params = {}) {
+  const resolvedSql = prepareQuery(sql, params);
+  const cacheKey = `query:${generateHash(conexao, resolvedSql)}`;
   
-  try {
-    const cachedData = await client.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+  if (ttlSeconds > 1) {
+    try {
+      const cachedData = await client.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+    } catch (err) {
+      console.error('Redis get error:', err);
     }
-  } catch (err) {
-    console.error('Redis get error:', err);
-    // Fallback: ignora o cache em caso de erro no redis
   }
 
   // Se não estiver em cache, consulta o banco
-  const result = await executeQuery(conexao, sql);
+  const result = await executeQuery(conexao, sql, 120000, params);
 
   try {
     await client.setEx(cacheKey, ttlSeconds, JSON.stringify(result));

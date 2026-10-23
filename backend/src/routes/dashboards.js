@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { syncBiData } = require('../services/alertJob');
+const { syncBiData, getSyncProgress, sendUnmetTargetsSummaryEmail } = require('../services/alertJob');
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -10,7 +10,14 @@ router.get('/', async (req, res) => {
       include: {
         indicadores: {
           where: { indicador: { ativo: true } },
-          include: { indicador: { include: { metas: true } } }
+          include: {
+            indicador: {
+              include: {
+                metas: true,
+                planosAcao: { orderBy: { criado_em: 'desc' } }
+              }
+            }
+          }
         },
         layouts: true
       }
@@ -22,16 +29,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Consultar progresso em tempo real da sincronização
+router.get('/sync-status', (req, res) => {
+  res.json(getSyncProgress());
+});
+
 // Forçar sincronização imediata do BI (opcionalmente filtrando pelo setor selecionado)
 router.post('/sync', async (req, res) => {
   try {
     const { setorId } = req.body || {};
-    // Roda a rotina de sync em background (não aguarda para não dar timeout caso seja longo)
     syncBiData('MANUAL', setorId);
     res.json({ success: true, message: 'Sincronização iniciada com sucesso!' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao disparar sincronização' });
+  }
+});
+
+// Disparar resumo por e-mail dos indicadores fora da meta
+router.post('/enviar-resumo-email', async (req, res) => {
+  try {
+    const { setorId } = req.body || {};
+    const result = await sendUnmetTargetsSummaryEmail(setorId);
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao enviar resumo por e-mail: ' + error.message });
   }
 });
 
@@ -43,7 +66,6 @@ router.put('/:id/layout', async (req, res) => {
 
     const parsedSetorId = setorId === 'ALL' || !setorId ? null : parseInt(setorId);
 
-    
     if (parsedSetorId === null) {
       const existing = await prisma.dashboardLayout.findFirst({ where: { dashboardId: parseInt(id), setorId: null } });
       if (existing) {

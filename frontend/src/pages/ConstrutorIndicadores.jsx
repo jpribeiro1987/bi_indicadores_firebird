@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database } from 'lucide-react';
+import { Save, Play, AlertCircle, CheckCircle2, ChevronLeft, Plus, Trash2, Edit2, Settings, Database, Copy } from 'lucide-react';
 import ModalGerenciarCategorias from '../components/ModalGerenciarCategorias';
 import ModalUnidadeMedida from '../components/ModalUnidadeMedida';
 import ModalFrequenciaApuracao from '../components/ModalFrequenciaApuracao';
@@ -30,7 +30,6 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   const [formData, setFormData] = useState(initialForm);
-  const uniqueUnits = [...new Set(['%', 'R$', 'Qtd', 'h', 'dias', ...indicadores.map(i => i.unidade_medida).filter(Boolean)])];
   const [testResult, setTestResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -106,7 +105,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
   };
 
   const addMeta = () => {
-    setFormData({ ...formData, metas: [...formData.metas, { descricao: '', valor_alvo: '', data_limite: '' }] });
+    setFormData({ ...formData, metas: [...formData.metas, { descricao: '', valor_alvo: '', competencia: '', data_limite: '' }] });
   };
 
   const updateMeta = (index, field, value) => {
@@ -162,9 +161,20 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     }
   };
 
+  const duplicarIndicador = async (id) => {
+    try {
+      await axios.post(`/api/indicadores/${id}/duplicar`);
+      fetchIndicadores();
+      alert('Indicador duplicado com sucesso!');
+    } catch (err) {
+      alert('Erro ao duplicar indicador');
+    }
+  };
+
   const editarIndicador = (ind) => {
     const formattedMetas = (ind.metas || []).map(m => ({
       ...m,
+      competencia: m.competencia || '',
       data_limite: m.data_limite ? m.data_limite.substring(0, 10) : ''
     }));
     
@@ -183,27 +193,28 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
       (ind.categoria && ind.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-  return (
-    <><div style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <h2 style={{ margin: 0, color: 'var(--text-main)' }}>Construtor de BI</h2>
-            <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Crie e gerencie indicadores personalizados</p>
+    return (
+      <>
+        <div style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div>
+              <h2 style={{ margin: 0, color: 'var(--text-main)' }}>Construtor de BI</h2>
+              <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Crie e gerencie indicadores personalizados</p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowBIModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', cursor: 'pointer' }}>
+                <Database size={16} /> Conexão BI
+              </button>
+              <button onClick={() => setIsCatModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', cursor: 'pointer' }}>
+                <Settings size={16} /> Categorias
+              </button>
+              <button onClick={() => { setFormData(initialForm); setIsFormOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                <Plus size={16} /> Novo Indicador
+              </button>
+            </div>
           </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => setShowBIModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', cursor: 'pointer' }}>
-              <Database size={16} /> Conexão BI
-            </button>
-            <button onClick={() => setIsCatModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '6px', cursor: 'pointer' }}>
-              <Settings size={16} /> Categorias
-            </button>
-            <button onClick={() => { setFormData(initialForm); setIsFormOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              <Plus size={16} /> Novo Indicador
-            </button>
-          </div>
-        </div>
-        <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input 
               type="text" 
               placeholder="Pesquisar por nome, código ou categoria..." 
@@ -213,41 +224,42 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
             />
           </div>
           <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              <tr>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Código</th>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Nome</th>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Categoria</th>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ativo</th>
-                <th style={{ padding: '16px', textAlign: 'right', color: '#475569' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredIndicadores.map(ind => (
-                <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
-                  <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
-                  <td style={{ padding: '16px', color: '#334155' }}>{ind.categoria || '-'}</td>
-                  <td style={{ padding: '16px', color: '#334155' }}>{ind.ativo ? 'Sim' : 'Não'}</td>
-                  <td style={{ padding: '16px', textAlign: 'right' }}>
-                    <button onClick={() => editarIndicador(ind)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar"><Edit2 size={18}/></button>
-                    <button onClick={() => deletarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir"><Trash2 size={18}/></button>
-                  </td>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <tr>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Código</th>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Nome</th>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Categoria</th>
+                  <th style={{ padding: '16px', textAlign: 'left', color: '#475569' }}>Ativo</th>
+                  <th style={{ padding: '16px', textAlign: 'right', color: '#475569' }}>Ações</th>
                 </tr>
-              ))}
-              {filteredIndicadores.length === 0 && (
-                <tr><td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredIndicadores.map(ind => (
+                  <tr key={ind.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '16px', color: '#334155' }}>{ind.codigo || '-'}</td>
+                    <td style={{ padding: '16px', color: '#334155', fontWeight: 'bold' }}>{ind.nome}</td>
+                    <td style={{ padding: '16px', color: '#334155' }}>{ind.categoria || '-'}</td>
+                    <td style={{ padding: '16px', color: '#334155' }}>{ind.ativo ? 'Sim' : 'Não'}</td>
+                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <button onClick={() => duplicarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginRight: '8px' }} title="Duplicar / Clonar Indicador"><Copy size={18}/></button>
+                      <button onClick={() => editarIndicador(ind)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '8px' }} title="Editar"><Edit2 size={18}/></button>
+                      <button onClick={() => deletarIndicador(ind.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Excluir"><Trash2 size={18}/></button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredIndicadores.length === 0 && (
+                  <tr><td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Nenhum indicador cadastrado.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-      {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
-      {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
-      {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
-      {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
-    </>
+        {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
+        {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
+        {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
+        {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
+      </>
     );
   }
 
@@ -256,7 +268,7 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
     <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto', background: 'var(--bg-main)' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
         <button onClick={() => setIsFormOpen(false)} style={{ padding: '8px', marginRight: '16px', background: '#00cbb4', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><ChevronLeft size={20}/></button>
-        <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>NOVO REGISTRO</h2>
+        <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>{formData.id ? 'EDITAR REGISTRO' : 'NOVO REGISTRO'}</h2>
       </div>
       <div style={{ background: '#fff', padding: '0', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid #eee', padding: '0 24px', gap: '24px' }}>
@@ -391,7 +403,12 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Consulta</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', margin: 0 }}>Consulta</label>
+                  <span style={{ fontSize: '0.78rem', color: '#475569', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+                    Dica: você pode usar os parâmetros dinâmicos <code>:DATA_INICIO</code> e <code>:DATA_FIM</code> no SQL
+                  </span>
+                </div>
                 <textarea name="query_sql" value={formData.query_sql} onChange={handleChange} rows={6} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontFamily: 'monospace' }} />
               </div>
 
@@ -450,24 +467,28 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
 
           {activeTab === 'metas' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '0 0 8px 0', color: '#333' }}>Metas</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '0 0 8px 0', color: '#333' }}>Metas (Histórico por Competência / Ano)</h3>
               
               <button onClick={addMeta} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#fff', border: '1px solid #ccc', borderRadius: '16px', cursor: 'pointer', fontSize: '0.85rem', color: '#333' }}>
-                Adicionar
+                + Adicionar Meta
               </button>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                 {formData.metas.map((meta, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f9f9f9', padding: '12px', borderRadius: '4px', border: '1px solid #eee' }}>
-                    <div style={{ flex: 2 }}>
+                  <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f9f9f9', padding: '12px', borderRadius: '4px', border: '1px solid #eee', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 2, minWidth: '160px' }}>
                       <label style={{ fontSize: '0.75rem', color: '#666' }}>Descrição</label>
                       <input value={meta.descricao} onChange={(e) => updateMeta(index, 'descricao', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: '120px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#666' }}>Ano / Competência</label>
+                      <input placeholder="Ex: 2026 ou 10/2026" value={meta.competencia || ''} onChange={(e) => updateMeta(index, 'competencia', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '110px' }}>
                       <label style={{ fontSize: '0.75rem', color: '#666' }}>Valor Alvo</label>
                       <input type="number" value={meta.valor_alvo} onChange={(e) => updateMeta(index, 'valor_alvo', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: '130px' }}>
                       <label style={{ fontSize: '0.75rem', color: '#666' }}>Data Limite</label>
                       <input type="date" value={meta.data_limite} onChange={(e) => updateMeta(index, 'data_limite', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                     </div>
@@ -499,8 +520,8 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
       </div>
     </div>
     {isCatModalOpen && <ModalGerenciarCategorias onClose={() => { setIsCatModalOpen(false); fetchCategoriasList(); }} />}
-      {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
-      {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
+    {isUnidadeModalOpen && <ModalUnidadeMedida onClose={() => { setIsUnidadeModalOpen(false); fetchUnidadesList(); }} />}
+    {isFreqModalOpen && <ModalFrequenciaApuracao onClose={() => { setIsFreqModalOpen(false); fetchFrequenciasList(); }} />}
     {showBIModal && <ModalConexaoBI onClose={() => setShowBIModal(false)} />}
   </>);
 }

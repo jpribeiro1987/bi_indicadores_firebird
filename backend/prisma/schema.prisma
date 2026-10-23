@@ -197,6 +197,7 @@ model Indicador {
   
   dashboards     DashboardIndicador[]
   metas          MetaIndicador[]
+  planosAcao     PlanoAcaoIndicador[]
   cache          CacheIndicador?
 }
 
@@ -227,7 +228,23 @@ model MetaIndicador {
   indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
   descricao     String
   valor_alvo    Float
+  competencia   String?
   data_limite   DateTime?
+}
+
+model PlanoAcaoIndicador {
+  id            Int       @id @default(autoincrement())
+  indicadorId   Int
+  indicador     Indicador @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  competencia   String?
+  valor_obtido  Float?
+  meta_esperada Float?
+  justificativa String
+  plano_acao    String
+  responsavel   String?
+  prazo         String?
+  status        String    @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDO
+  criado_em     DateTime  @default(now())
 }
 
 model Dashboard {

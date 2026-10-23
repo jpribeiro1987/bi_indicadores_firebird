@@ -3,10 +3,48 @@ import { Sparkles, CheckCircle2, Calendar, Tag, Search } from 'lucide-react';
 
 const UPDATES_HISTORY = [
   {
+    versao: 'v2.5.0',
+    data: '23/10/2026',
+    titulo: 'Plano de Ação SGQ, Modo TV, Semáforo de Metas, Progresso em Tempo Real e Exportação Multi-Abas',
+    destaque: true,
+    itens: [
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Análise Crítica e Plano de Ação (SGQ) para Indicadores',
+        descricao: 'Adicionado registro e acompanhamento de Justificativas e Planos de Ação diretamente nos cards dos indicadores e no pop-up de Metas Não Alcançadas, com controle de Competência, Responsável, Prazo e Status (Pendente, Em Andamento, Concluído).'
+      },
+      {
+        categoria: 'Dashboards & Metas',
+        titulo: 'Cores Condicionais Automáticas (Semáforo) e Histórico de Metas por Competência',
+        descricao: 'Gráficos de Barras e Cards Numéricos agora mudam automaticamente para Verde (meta atingida) ou Vermelho (abaixo da meta) com base na orientação do indicador. Adicionado suporte a múltiplas metas por Ano/Competência.'
+      },
+      {
+        categoria: 'Dashboards',
+        titulo: 'Atualização Individual por Indicador, Ficha Técnica [i] e Modo TV',
+        descricao: 'Adicionado botão para atualizar apenas um indicador específico no Firebird sem recarregar o painel todo, botão de Ficha Técnica (exibindo fórmula, fonte e metas) e Modo TV em tela cheia com rotação automática entre setores a cada 25 segundos.'
+      },
+      {
+        categoria: 'Dashboards',
+        titulo: 'Busca, Ordenação por Coluna e Total/Média nas Tabelas de Dados',
+        descricao: 'Indicadores do tipo Tabela de Dados agora contam com filtro rápido de texto, ordenação crescente/decrescente ao clicar no título da coluna e linha automática de Soma (Σ) e Média (x̄) no rodapé.'
+      },
+      {
+        categoria: 'Logs & Sincronização',
+        titulo: 'Barra de Progresso em Tempo Real e Parâmetros Dinâmicos (:DATA_INICIO e :DATA_FIM)',
+        descricao: 'Ao clicar em "Atualizar Agora", o painel exibe uma barra de progresso em tempo real mostrando qual indicador está sendo processado e recarrega os gráficos automaticamente ao concluir. Suporte às variáveis :DATA_INICIO e :DATA_FIM nas queries SQL.'
+      },
+      {
+        categoria: 'Exportação',
+        titulo: 'Exportar Painel Completo em Excel (Múltiplas Abas), Clonar Indicador e Resumo por E-mail',
+        descricao: 'Adicionado botão "Exportar Painel" que gera uma única planilha .xlsx onde cada indicador do setor vira uma aba, botão de Duplicar/Clonar indicador no Construtor de BI e envio de resumo por e-mail dos indicadores fora da meta.'
+      }
+    ]
+  },
+  {
     versao: 'v2.4.0',
     data: '19/10/2026',
     titulo: 'Exportação XLS, Sincronização por Setor e Filtro em Tabelas',
-    destaque: true,
+    destaque: false,
     itens: [
       {
         categoria: 'Logs & Sincronização',

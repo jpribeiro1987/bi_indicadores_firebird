@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get('/', async (req, res) => {
   try {
     const indicadores = await prisma.indicador.findMany({
-      include: { metas: true },
+      include: { metas: true, planosAcao: { orderBy: { criado_em: 'desc' } } },
       orderBy: { id: 'desc' }
     });
     res.json(indicadores);
@@ -22,7 +22,6 @@ router.get('/', async (req, res) => {
 // Deletar indicador
 router.delete('/:id', async (req, res) => {
   try {
-    // Delete from dashboard layout first
     await prisma.dashboardIndicador.deleteMany({ where: { indicadorId: parseInt(req.params.id) } });
     await prisma.indicador.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -37,10 +36,10 @@ router.post('/', async (req, res) => {
   try {
     const data = req.body;
     
-    // Tratamento das metas
     const metasData = Array.isArray(data.metas) ? data.metas.map(m => ({
-      descricao: m.descricao,
-      valor_alvo: parseFloat(m.valor_alvo) || 0,
+      descricao: m.descricao || '',
+      valor_alvo: parseFloat(String(m.valor_alvo).replace(',', '.')) || 0,
+      competencia: m.competencia || null,
       data_limite: m.data_limite ? new Date(m.data_limite) : null
     })) : [];
 
@@ -61,13 +60,11 @@ router.post('/', async (req, res) => {
         ativo: data.ativo !== undefined ? data.ativo : true,
         tipo_consulta: data.tipo_consulta || 'SQL',
         conexaoId: data.conexaoId ? parseInt(data.conexaoId) : null,
-        
         query_sql: data.query_sql || '',
         tipo_grafico: data.tipo_grafico || 'BAR',
         coluna_x: data.coluna_x,
         coluna_y: data.coluna_y,
         dias_alerta: data.dias_alerta ? parseInt(data.dias_alerta) : null,
-        
         metas: {
           create: metasData
         }
@@ -81,7 +78,6 @@ router.post('/', async (req, res) => {
       defaultDash = await prisma.dashboard.create({ data: { nome: 'Painel Geral' } });
     }
     
-    // Find highest pos_y
     const lastItem = await prisma.dashboardIndicador.findFirst({
       where: { dashboardId: defaultDash.id },
       orderBy: { pos_y: 'desc' }
@@ -95,7 +91,7 @@ router.post('/', async (req, res) => {
         pos_x: 0,
         pos_y: newY,
         largura: 6,
-          altura: 12
+        altura: 12
       }
     });
 
@@ -106,20 +102,91 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Duplicar / Clonar indicador
+router.post('/:id/duplicar', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const original = await prisma.indicador.findUnique({
+      where: { id },
+      include: { metas: true }
+    });
+    if (!original) return res.status(404).json({ error: 'Indicador original não encontrado' });
+
+    const clone = await prisma.indicador.create({
+      data: {
+        codigo: original.codigo ? `${original.codigo}_COPIA` : '',
+        nome: `${original.nome} (Cópia)`,
+        descricao: original.descricao,
+        desc_formula: original.desc_formula,
+        fonte_referencia: original.fonte_referencia,
+        categoria: original.categoria,
+        subcategoria: original.subcategoria,
+        unidade_medida: original.unidade_medida,
+        orientacao: original.orientacao,
+        frequencia: original.frequencia,
+        setorId: original.setorId,
+        peso: original.peso,
+        ativo: original.ativo,
+        tipo_consulta: original.tipo_consulta,
+        conexaoId: original.conexaoId,
+        query_sql: original.query_sql,
+        tipo_grafico: original.tipo_grafico,
+        coluna_x: original.coluna_x,
+        coluna_y: original.coluna_y,
+        dias_alerta: original.dias_alerta,
+        metas: {
+          create: (original.metas || []).map(m => ({
+            descricao: m.descricao,
+            valor_alvo: m.valor_alvo,
+            competencia: m.competencia,
+            data_limite: m.data_limite
+          }))
+        }
+      },
+      include: { metas: true }
+    });
+
+    let defaultDash = await prisma.dashboard.findFirst({ where: { nome: 'Painel Geral' } });
+    if (!defaultDash) {
+      defaultDash = await prisma.dashboard.create({ data: { nome: 'Painel Geral' } });
+    }
+    const lastItem = await prisma.dashboardIndicador.findFirst({
+      where: { dashboardId: defaultDash.id },
+      orderBy: { pos_y: 'desc' }
+    });
+    const newY = lastItem ? lastItem.pos_y + lastItem.altura : 0;
+
+    await prisma.dashboardIndicador.create({
+      data: {
+        dashboardId: defaultDash.id,
+        indicadorId: clone.id,
+        pos_x: 0,
+        pos_y: newY,
+        largura: 6,
+        altura: 12
+      }
+    });
+
+    res.json(clone);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao duplicar indicador' });
+  }
+});
+
 // Atualizar indicador
 router.put('/:id', async (req, res) => {
   try {
     const data = req.body;
     const id = parseInt(req.params.id);
     
-    // Tratamento das metas
     const metasData = Array.isArray(data.metas) ? data.metas.map(m => ({
-      descricao: m.descricao,
-      valor_alvo: parseFloat(m.valor_alvo) || 0,
+      descricao: m.descricao || '',
+      valor_alvo: parseFloat(String(m.valor_alvo).replace(',', '.')) || 0,
+      competencia: m.competencia || null,
       data_limite: m.data_limite ? new Date(m.data_limite) : null
     })) : [];
 
-    // Delete existing metas to replace them
     await prisma.metaIndicador.deleteMany({ where: { indicadorId: id } });
 
     const indicador = await prisma.indicador.update({
@@ -148,7 +215,8 @@ router.put('/:id', async (req, res) => {
         metas: {
           create: metasData
         }
-      }
+      },
+      include: { metas: true }
     });
     res.json(indicador);
   } catch (error) {
@@ -160,10 +228,8 @@ router.put('/:id', async (req, res) => {
 // Testar query (retorna dados em JSON)
 router.post('/testar', async (req, res) => {
   try {
-    const { query_sql, conexaoId } = req.body;
-    
-    // Testa apenas se a sintaxe passa no filtro anti-injeção antes de rodar
-    const safeSql = prepareQuery(query_sql);
+    const { query_sql, conexaoId, startDate, endDate } = req.body;
+    const safeSql = prepareQuery(query_sql, { startDate, endDate });
     
     let conexao;
     if (conexaoId) {
@@ -174,33 +240,37 @@ router.post('/testar', async (req, res) => {
     
     if (!conexao) return res.status(404).json({ error: 'Nenhuma conexão com banco SPDATA cadastrada.' });
 
-    // Testa no firebird via cache para evitar sobrecarga em testes duplos
-    const result = await executeWithCache(conexao, safeSql, 60); // cache curto de 1 minuto pra testes
+    const result = await executeWithCache(conexao, safeSql, 60, { startDate, endDate });
     res.json(result);
-
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Erro ao executar SQL no Firebird.' });
   }
 });
 
-// Executar indicador já salvo (usado pelo Grid Layout)
+// Executar indicador já salvo (usado pelo Grid Layout e atualização individual)
 router.get('/:id/executar', async (req, res) => {
   try {
+    const { force, startDate, endDate } = req.query;
     const indicador = await prisma.indicador.findUnique({ 
       where: { id: parseInt(req.params.id) },
       include: { cache: true }
     });
     if (!indicador) return res.status(404).json({ error: 'Indicador não encontrado' });
 
+    const usesDynamicDates = /:(DATA_INICIO|DATA_FIM)\b/i.test(indicador.query_sql || '');
+    const forceRefresh = force === 'true' || (usesDynamicDates && (startDate || endDate));
+
     let result;
-    if (indicador.cache && indicador.cache.dados_json) {
+    if (!forceRefresh && indicador.cache && indicador.cache.dados_json) {
       result = JSON.parse(indicador.cache.dados_json);
     } else {
-      const conexao = await prisma.conexaoBanco.findFirst();
+      const conexao = indicador.conexaoId
+        ? await prisma.conexaoBanco.findUnique({ where: { id: indicador.conexaoId } })
+        : await prisma.conexaoBanco.findFirst();
       if (!conexao) return res.status(404).json({ error: 'Sem conexões cadastradas' });
-      result = await executeWithCache(conexao, indicador.query_sql, 1); // direct query
-      // Save to cache on demand if empty
+
+      result = await executeWithCache(conexao, indicador.query_sql, 1, { startDate, endDate });
       await prisma.cacheIndicador.upsert({
         where: { indicadorId: indicador.id },
         update: { dados_json: JSON.stringify(result), atualizado_em: new Date() },
@@ -212,13 +282,80 @@ router.get('/:id/executar', async (req, res) => {
       config: {
         tipo_grafico: indicador.tipo_grafico,
         coluna_x: indicador.coluna_x,
-        coluna_y: indicador.coluna_y
+        coluna_y: indicador.coluna_y,
+        unidade_medida: indicador.unidade_medida
       },
       data: result
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Erro interno' });
+    res.status(500).json({ error: error.message || 'Erro interno' });
+  }
+});
+
+// --- PLANOS DE AÇÃO / JUSTIFICATIVAS ---
+router.get('/:id/planos-acao', async (req, res) => {
+  try {
+    const planos = await prisma.planoAcaoIndicador.findMany({
+      where: { indicadorId: parseInt(req.params.id) },
+      orderBy: { criado_em: 'desc' }
+    });
+    res.json(planos);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar planos de ação' });
+  }
+});
+
+router.post('/:id/planos-acao', async (req, res) => {
+  try {
+    const indicadorId = parseInt(req.params.id);
+    const { competencia, valor_obtido, meta_esperada, justificativa, plano_acao, responsavel, prazo, status } = req.body;
+    const novo = await prisma.planoAcaoIndicador.create({
+      data: {
+        indicadorId,
+        competencia: competencia || null,
+        valor_obtido: valor_obtido !== undefined && valor_obtido !== '' ? parseFloat(String(valor_obtido).replace(',', '.')) : null,
+        meta_esperada: meta_esperada !== undefined && meta_esperada !== '' ? parseFloat(String(meta_esperada).replace(',', '.')) : null,
+        justificativa: justificativa || '',
+        plano_acao: plano_acao || '',
+        responsavel: responsavel || '',
+        prazo: prazo || '',
+        status: status || 'PENDENTE'
+      }
+    });
+    res.json(novo);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao registrar plano de ação' });
+  }
+});
+
+router.put('/planos-acao/:planoId', async (req, res) => {
+  try {
+    const id = parseInt(req.params.planoId);
+    const { status, justificativa, plano_acao, responsavel, prazo } = req.body;
+    const atualizado = await prisma.planoAcaoIndicador.update({
+      where: { id },
+      data: {
+        ...(status !== undefined ? { status } : {}),
+        ...(justificativa !== undefined ? { justificativa } : {}),
+        ...(plano_acao !== undefined ? { plano_acao } : {}),
+        ...(responsavel !== undefined ? { responsavel } : {}),
+        ...(prazo !== undefined ? { prazo } : {})
+      }
+    });
+    res.json(atualizado);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar plano de ação' });
+  }
+});
+
+router.delete('/planos-acao/:planoId', async (req, res) => {
+  try {
+    await prisma.planoAcaoIndicador.delete({ where: { id: parseInt(req.params.planoId) } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao remover plano de ação' });
   }
 });
 
