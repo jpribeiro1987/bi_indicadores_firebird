@@ -622,11 +622,19 @@ export default function ConstrutorIndicadores({ userRole, userSectors = [] }) {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Gráfico (BI Frontend)</label>
                   <select name="tipo_grafico" value={formData.tipo_grafico} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                    <option value="BAR">Barras</option>
+                    <option value="BAR">Barras Verticais</option>
+                    <option value="HBAR">Barras Horizontais (Ranking)</option>
+                    <option value="PARETO">Pareto 80/20 (Qualidade SGQ)</option>
+                    <option value="COMBO">Combo (Barras + Linha Tendência)</option>
                     <option value="LINE">Linhas</option>
+                    <option value="STEP">Linha em Degraus (Patamar)</option>
                     <option value="AREA">Área</option>
                     <option value="PIE">Pizza</option>
                     <option value="DONUT">Rosca (Donut)</option>
+                    <option value="FUNNEL">Funil de Etapas</option>
+                    <option value="TREEMAP">Mapa de Árvore (Proporção)</option>
+                    <option value="RADAR">Radar / Teia</option>
+                    <option value="POLAR">Polar / Barras Radiais</option>
                     <option value="GAUGE">Velocímetro de Meta (Gauge)</option>
                     <option value="SCATTER">Dispersão</option>
                     <option value="TABLE">Tabela de Dados</option>

@@ -446,19 +446,206 @@ export default function Dashboards({ userRole, userSectors = [] }) {
       return val;
     });
     
+    const parseNum = (v) => {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') return parseFloat(v.replace(',', '.')) || 0;
+      return 0;
+    };
+
     const seriesData = data.map(item => {
       const rawVal = getVal(item, config.coluna_y);
-      if (config.tipo_grafico === 'BAR' && activeMeta && indicador.orientacao) {
+      if ((config.tipo_grafico === 'BAR' || config.tipo_grafico === 'HBAR' || config.tipo_grafico === 'COMBO' || config.tipo_grafico === 'POLAR') && activeMeta && indicador.orientacao) {
         return {
           value: rawVal,
           itemStyle: {
             color: evaluateTargetColor(indicador, rawVal, '#00cbb4'),
-            borderRadius: [4, 4, 0, 0]
+            borderRadius: config.tipo_grafico === 'HBAR' ? [0, 4, 4, 0] : [4, 4, 0, 0]
           }
         };
       }
       return rawVal;
     });
+
+    if (config.tipo_grafico === 'PARETO') {
+      const pairs = data.map((item, idx) => ({
+        name: String(xAxisData[idx] ?? ''),
+        val: parseNum(getVal(item, config.coluna_y))
+      })).sort((a, b) => b.val - a.val);
+
+      const totalSum = pairs.reduce((s, p) => s + Math.max(0, p.val), 0) || 1;
+      let running = 0;
+      const cumPct = pairs.map(p => {
+        running += Math.max(0, p.val);
+        return Number(((running / totalSum) * 100).toFixed(1));
+      });
+
+      return {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        grid: { left: '4%', right: '5%', bottom: '15%', containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: pairs.map(p => p.name),
+          axisLabel: { color: '#555', rotate: pairs.length > 5 ? 40 : 0 }
+        },
+        yAxis: [
+          { type: 'value', name: config.coluna_y ? config.coluna_y.toUpperCase() : 'VALOR', splitLine: { lineStyle: { type: 'dashed' } } },
+          { type: 'value', name: '% ACUM.', min: 0, max: 100, axisLabel: { formatter: '{value}%' }, splitLine: { show: false } }
+        ],
+        series: [
+          {
+            name: 'Valor',
+            type: 'bar',
+            data: pairs.map(p => p.val),
+            itemStyle: { color: '#00cbb4', borderRadius: [4, 4, 0, 0] },
+            label: { show: true, position: 'top', fontSize: 10, formatter: (pr) => formatValue(pr.value) }
+          },
+          {
+            name: '% Acumulado (Pareto)',
+            type: 'line',
+            yAxisIndex: 1,
+            data: cumPct,
+            smooth: true,
+            itemStyle: { color: '#f59e0b' },
+            lineStyle: { width: 3, color: '#f59e0b' },
+            markLine: {
+              symbol: 'none',
+              data: [{ yAxis: 80, name: 'Corte 80%', lineStyle: { color: '#ef4444', type: 'dashed', width: 2 }, label: { formatter: '80% (Pareto)' } }]
+            }
+          }
+        ]
+      };
+    }
+
+    if (config.tipo_grafico === 'HBAR') {
+      return {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '4%', right: '8%', bottom: '10%', containLabel: true },
+        xAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+        yAxis: { type: 'category', data: xAxisData, inverse: true, axisLabel: { color: '#555' } },
+        series: [{
+          type: 'bar',
+          data: seriesData,
+          itemStyle: { color: '#00cbb4', borderRadius: [0, 4, 4, 0] },
+          label: {
+            show: true,
+            position: 'right',
+            color: '#333',
+            fontWeight: 'bold',
+            formatter: (params) => formatValue(params.value) + (indicador.unidade_medida ? ' ' + indicador.unidade_medida : '')
+          }
+        }]
+      };
+    }
+
+    if (config.tipo_grafico === 'COMBO') {
+      const numericVals = data.map(item => parseNum(getVal(item, config.coluna_y)));
+      const movingAvg = numericVals.map((v, idx) => {
+        const slice = numericVals.slice(Math.max(0, idx - 2), idx + 1);
+        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+        return Number(avg.toFixed(2));
+      });
+      return {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        legend: { top: 0, data: ['Resultado', 'Tendência (Média Móvel)'] },
+        grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+        xAxis: { type: 'category', data: xAxisData, axisLabel: { color: '#555', rotate: xAxisData.length > 5 ? 45 : 0 } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+        series: [
+          {
+            name: 'Resultado',
+            type: 'bar',
+            data: seriesData,
+            itemStyle: { color: '#00cbb4', borderRadius: [4, 4, 0, 0] },
+            markLine: markLine,
+            label: { show: true, position: 'top', fontSize: 10, formatter: (p) => formatValue(p.value) }
+          },
+          {
+            name: 'Tendência (Média Móvel)',
+            type: 'line',
+            data: movingAvg,
+            smooth: true,
+            itemStyle: { color: '#4f46e5' },
+            lineStyle: { width: 3, color: '#4f46e5' }
+          }
+        ]
+      };
+    }
+
+    if (config.tipo_grafico === 'FUNNEL') {
+      const funnelData = data.map((item, idx) => ({
+        name: String(xAxisData[idx] ?? ''),
+        value: parseNum(getVal(item, config.coluna_y))
+      })).sort((a, b) => b.value - a.value);
+      return {
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{
+          type: 'funnel',
+          left: '10%',
+          top: 20,
+          bottom: 20,
+          width: '80%',
+          sort: 'descending',
+          gap: 3,
+          label: { show: true, position: 'inside', formatter: '{b}: {c}' },
+          itemStyle: { borderColor: '#fff', borderWidth: 1 },
+          data: funnelData
+        }]
+      };
+    }
+
+    if (config.tipo_grafico === 'TREEMAP') {
+      const treeData = data.map((item, idx) => ({
+        name: String(xAxisData[idx] ?? ''),
+        value: parseNum(getVal(item, config.coluna_y))
+      }));
+      return {
+        tooltip: { formatter: '{b}: {c}' + (indicador.unidade_medida ? ' ' + indicador.unidade_medida : '') },
+        series: [{
+          type: 'treemap',
+          roam: false,
+          breadcrumb: { show: false },
+          label: { show: true, formatter: '{b}\n{c}' },
+          itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 },
+          data: treeData
+        }]
+      };
+    }
+
+    if (config.tipo_grafico === 'RADAR') {
+      const numVals = data.map(item => parseNum(getVal(item, config.coluna_y)));
+      const targetVal = activeMeta && activeMeta.valor_alvo !== null ? parseNum(activeMeta.valor_alvo) : 0;
+      const maxIndicatorVal = Math.max(...numVals, targetVal, 10) * 1.2;
+      const indicators = xAxisData.map(lbl => ({ name: String(lbl ?? ''), max: Math.round(maxIndicatorVal) }));
+      const radarSeries = [{ value: numVals, name: 'Resultado', areaStyle: { opacity: 0.25 } }];
+      if (targetVal > 0) {
+        radarSeries.push({ value: xAxisData.map(() => targetVal), name: 'Meta', lineStyle: { type: 'dashed', color: '#ef4444' }, itemStyle: { color: '#ef4444' } });
+      }
+      return {
+        tooltip: {},
+        legend: { bottom: 0, data: radarSeries.map(s => s.name) },
+        radar: { indicator: indicators.length > 0 ? indicators : [{ name: '-', max: 100 }], radius: '62%' },
+        series: [{
+          type: 'radar',
+          data: radarSeries
+        }]
+      };
+    }
+
+    if (config.tipo_grafico === 'POLAR') {
+      return {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        polar: { radius: [25, '72%'] },
+        angleAxis: { type: 'category', data: xAxisData, startAngle: 75 },
+        radiusAxis: { type: 'value' },
+        series: [{
+          type: 'bar',
+          data: seriesData,
+          coordinateSystem: 'polar',
+          itemStyle: { color: '#00cbb4' },
+          label: { show: false }
+        }]
+      };
+    }
 
     if (config.tipo_grafico === 'GAUGE') {
       const lastRaw = data.length > 0 ? getVal(data[data.length - 1], config.coluna_y) : 0;
@@ -533,11 +720,12 @@ export default function Dashboards({ userRole, userSectors = [] }) {
         splitLine: { lineStyle: { type: 'dashed' } }
       },
       series: [{ 
-        type: (config.tipo_grafico === 'LINE' || config.tipo_grafico === 'AREA') ? 'line' : config.tipo_grafico === 'SCATTER' ? 'scatter' : 'bar', 
+        type: (config.tipo_grafico === 'LINE' || config.tipo_grafico === 'AREA' || config.tipo_grafico === 'STEP') ? 'line' : config.tipo_grafico === 'SCATTER' ? 'scatter' : 'bar', 
         data: seriesData,
+        step: config.tipo_grafico === 'STEP' ? 'middle' : false,
         areaStyle: config.tipo_grafico === 'AREA' ? { opacity: 0.3 } : undefined,
         itemStyle: { color: '#00cbb4', borderRadius: config.tipo_grafico === 'BAR' ? [4, 4, 0, 0] : 0 },
-        smooth: true,
+        smooth: config.tipo_grafico !== 'STEP',
         symbolSize: config.tipo_grafico === 'SCATTER' ? 12 : 6,
         markLine: markLine,
         label: {
@@ -1241,10 +1429,20 @@ export default function Dashboards({ userRole, userSectors = [] }) {
                       style={{ padding: '3px 4px', fontSize: '0.7rem', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}
                     >
                       <option value="BAR">Barras</option>
+                      <option value="HBAR">Barras Horiz.</option>
+                      <option value="PARETO">Pareto 80/20</option>
+                      <option value="COMBO">Combo + Tendência</option>
                       <option value="LINE">Linha</option>
+                      <option value="STEP">Degraus (Step)</option>
                       <option value="AREA">Área</option>
                       <option value="PIE">Pizza</option>
+                      <option value="DONUT">Rosca (Donut)</option>
+                      <option value="FUNNEL">Funil</option>
+                      <option value="TREEMAP">Mapa de Árvore</option>
+                      <option value="RADAR">Radar / Teia</option>
+                      <option value="POLAR">Polar Radial</option>
                       <option value="GAUGE">Velocímetro</option>
+                      <option value="SCATTER">Dispersão</option>
                       <option value="TABLE">Tabela</option>
                       <option value="CARD">Card</option>
                     </select>

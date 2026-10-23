@@ -15,8 +15,8 @@ const UPDATES_HISTORY = [
       },
       {
         categoria: 'Dashboards & Metas',
-        titulo: 'Gráfico de Velocímetro (Gauge), Exportar Gráfico em PNG (📷) e Estatísticas no Card',
-        descricao: 'Novo tipo de gráfico Velocímetro de Meta (Gauge), botão de câmera (📷) em cada card para salvar o gráfico em imagem PNG de alta resolução e faixa automática no rodapé exibindo Mínimo, Máximo, Média (x̄) e Acumulado (Σ).'
+        titulo: '9 Novos Modelos de Gráficos Executivos (Pareto 80/20, Combo, Funil, Radar, Treemap, Polar, HBar, Step e Velocímetro)',
+        descricao: 'Adicionados os modelos Pareto 80/20 (com linha acumulada e corte em 80%), Barras Horizontais (Ranking), Combo (Barras + Média Móvel), Funil, Mapa de Árvore (Treemap), Radar/Teia, Linha em Degraus (Step), Polar Radial e Velocímetro (Gauge), além de botão de câmera (📷 PNG) e estatísticas Mín/Máx/x̄/Σ no rodapé.'
       },
       {
         categoria: 'Dashboards & Metas',
