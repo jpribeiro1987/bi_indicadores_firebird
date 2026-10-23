@@ -1,13 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const { sendEmail } = require('../services/emailService');
-const { scheduleAlertJob } = require('../services/alertJob');
-
+const { scheduleBiSyncJob } = require('../services/alertJob');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const envPath = path.resolve(__dirname, '../../.env');
 
 // Get SMTP config
 router.get('/smtp', async (req, res) => {
@@ -25,7 +21,7 @@ router.get('/smtp', async (req, res) => {
       SMTP_PASS: smtp.SMTP_PASS || '',
       SMTP_FROM: smtp.SMTP_FROM || ''
     });
-  } catch(error) {
+  } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar configurações SMTP do banco' });
   }
 });
@@ -33,19 +29,19 @@ router.get('/smtp', async (req, res) => {
 // Save SMTP config
 router.post('/smtp', async (req, res) => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = req.body;
-  
+
   try {
     const data = { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM };
     for (const key of Object.keys(data)) {
       if (data[key] !== undefined) {
         await prisma.configuracao.upsert({
           where: { chave: key },
-          update: { valor: data[key] },
-          create: { chave: key, valor: data[key] }
+          update: { valor: String(data[key]) },
+          create: { chave: key, valor: String(data[key]) }
         });
       }
     }
-    res.json({ success: true, message: 'Configurações SMTP salvas com sucesso' });
+    res.json({ success: true, message: 'Configurações SMTP salvas com sucesso!' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao salvar configurações SMTP no banco' });
@@ -60,17 +56,16 @@ router.post('/smtp/test', async (req, res) => {
   }
 
   try {
-    // Tenta enviar o e-mail usando as variáveis atuais do process.env
     const result = await sendEmail(
       email,
-      'Teste de Configuração SMTP - Controle de Contratos',
-      '<h2>Sucesso!</h2><p>Sua configuração de SMTP está funcionando corretamente.</p>'
+      'Teste de Configuração SMTP - Sistema de Indicadores Hospitalar',
+      '<h2>Sucesso!</h2><p>Sua configuração de SMTP está funcionando corretamente para o disparo de resumos e cobranças de pendências (SGQ).</p>'
     );
-    
-    if (result) {
+
+    if (result && result.success) {
       res.json({ success: true, message: 'E-mail de teste enviado com sucesso!' });
     } else {
-      res.status(500).json({ error: 'Falha ao enviar e-mail. Verifique o console do servidor.' });
+      res.status(400).json({ error: (result && result.error) || 'Falha ao enviar e-mail. Verifique os dados de SMTP.' });
     }
   } catch (error) {
     res.status(500).json({ error: 'Erro de conexão SMTP: ' + error.message });
@@ -96,18 +91,17 @@ router.put('/', async (req, res) => {
   try {
     const data = req.body;
     const keys = Object.keys(data);
-    
+
     for (const key of keys) {
       await prisma.configuracao.upsert({
         where: { chave: key },
-        update: { valor: data[key] },
-        create: { chave: key, valor: data[key] }
+        update: { valor: String(data[key]) },
+        create: { chave: key, valor: String(data[key]) }
       });
     }
 
-    // Se o horário do cron foi atualizado, reagendar imediatamente
-    if (data.ALERT_CRON_TIME) {
-      await scheduleAlertJob(data.ALERT_CRON_TIME);
+    if (data.BI_SYNC_SCHEDULES !== undefined) {
+      await scheduleBiSyncJob(String(data.BI_SYNC_SCHEDULES));
     }
 
     res.json({ message: 'Configurações atualizadas' });
@@ -126,12 +120,14 @@ router.post('/', async (req, res) => {
         create: { chave: key, valor: String(req.body[key]) }
       });
     }
+    if (req.body.BI_SYNC_SCHEDULES !== undefined) {
+      await scheduleBiSyncJob(String(req.body.BI_SYNC_SCHEDULES));
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao salvar' });
   }
 });
-
 
 router.get('/logs', async (req, res) => {
   try {
@@ -140,7 +136,7 @@ router.get('/logs', async (req, res) => {
       take: 100
     });
     res.json(logs);
-  } catch(e) {
+  } catch (e) {
     res.status(500).json({ error: 'Erro ao buscar logs' });
   }
 });

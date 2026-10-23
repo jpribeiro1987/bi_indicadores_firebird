@@ -199,12 +199,13 @@ async function sendUnmetTargetsSummaryEmail(setorId = null) {
   `;
 
   const emailTo = Array.from(recipients).join(', ');
-  const ok = await sendEmail(emailTo, 'Resumo de Indicadores Fora da Meta - Sistema de Indicadores Hospitalar', html);
+  const resMail = await sendEmail(emailTo, 'Resumo de Indicadores Fora da Meta - Sistema de Indicadores Hospitalar', html);
+  const sentOk = Boolean(resMail && resMail.success);
   return {
-    sent: Boolean(ok),
+    sent: sentOk,
     count: unmetList.length,
     recipients: Array.from(recipients),
-    message: ok ? `Resumo enviado com sucesso para ${recipients.size} destinatário(s)!` : 'Falha ao enviar e-mail. Verifique as configurações SMTP.'
+    message: sentOk ? `Resumo enviado com sucesso para ${recipients.size} destinatário(s)!` : `Falha ao enviar e-mail: ${resMail?.error || 'Verifique as configurações SMTP em Configurações Gerais.'}`
   };
 }
 
@@ -278,11 +279,12 @@ async function sendPendingActionPlansEmail(setorId = null) {
   `;
 
   const emailTo = Array.from(recipients).join(', ');
-  const ok = await sendEmail(emailTo, 'Cobrança de Planos de Ação Pendentes (SGQ) - Sistema de Indicadores', html);
+  const resMail = await sendEmail(emailTo, 'Cobrança de Planos de Ação Pendentes (SGQ) - Sistema de Indicadores', html);
+  const sentOk = Boolean(resMail && resMail.success);
   return {
-    sent: Boolean(ok),
+    sent: sentOk,
     count: filtered.length,
-    message: ok ? `Notificação enviada com sucesso para ${recipients.size} destinatário(s) (${filtered.length} planos)!` : 'Falha ao enviar e-mail. Verifique as configurações SMTP.'
+    message: sentOk ? `Notificação enviada com sucesso para ${recipients.size} destinatário(s) (${filtered.length} planos)!` : `Falha ao enviar e-mail: ${resMail?.error || 'Verifique as configurações SMTP em Configurações Gerais.'}`
   };
 }
 

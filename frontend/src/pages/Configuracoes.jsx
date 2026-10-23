@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, Clock, Download, Upload, Database } from 'lucide-react';
+import { Save, Clock, Download, Upload, Database, Mail, Send } from 'lucide-react';
 
 const Configuracoes = () => {
   const [config, setConfig] = useState({
     BI_SYNC_SCHEDULES: '06:00'
   });
+
+  const [smtp, setSmtp] = useState({
+    SMTP_HOST: '',
+    SMTP_PORT: '587',
+    SMTP_USER: '',
+    SMTP_PASS: '',
+    SMTP_FROM: ''
+  });
+  const [testEmail, setTestEmail] = useState('');
+  const [savingSmtp, setSavingSmtp] = useState(false);
+  const [testingSmtp, setTestingSmtp] = useState(false);
     
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -13,6 +24,7 @@ const Configuracoes = () => {
 
   useEffect(() => {
     fetchConfig();
+    fetchSmtp();
   }, []);
 
   const fetchConfig = async () => {
@@ -23,6 +35,53 @@ const Configuracoes = () => {
       });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchSmtp = async () => {
+    try {
+      const res = await axios.get('/api/config/smtp');
+      setSmtp({
+        SMTP_HOST: res.data.SMTP_HOST || '',
+        SMTP_PORT: res.data.SMTP_PORT || '587',
+        SMTP_USER: res.data.SMTP_USER || '',
+        SMTP_PASS: res.data.SMTP_PASS || '',
+        SMTP_FROM: res.data.SMTP_FROM || ''
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSmtpChange = (e) => {
+    const { name, value } = e.target;
+    setSmtp(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveSmtp = async (e) => {
+    e.preventDefault();
+    setSavingSmtp(true);
+    try {
+      await axios.post('/api/config/smtp', smtp);
+      alert('Configurações de SMTP salvas com sucesso!');
+    } catch (err) {
+      alert('Erro ao salvar configurações de SMTP.');
+    } finally {
+      setSavingSmtp(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    if (!testEmail) return alert('Informe um e-mail de destino para o teste.');
+    setTestingSmtp(true);
+    try {
+      await axios.post('/api/config/smtp', smtp);
+      const res = await axios.post('/api/config/smtp/test', { email: testEmail });
+      alert(res.data?.message || 'E-mail de teste enviado com sucesso!');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Falha ao enviar e-mail de teste. Verifique Host, Porta, Usuário e Senha.');
+    } finally {
+      setTestingSmtp(false);
     }
   };
 
@@ -136,6 +195,110 @@ const Configuracoes = () => {
               }}
             >
               {loading ? 'Salvando...' : <><Save size={20}/> Salvar Configurações</>}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="glass-card" style={{ marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '1.3rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Mail size={20} color="var(--primary)" /> Servidor de E-mail (SMTP) — Disparo de Pendências e Alertas
+        </h2>
+
+        <form onSubmit={handleSaveSmtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <p style={{ color: 'var(--text-main)', fontSize: '0.92rem', margin: 0 }}>
+              Configure os dados do servidor SMTP utilizados para os botões <strong>"Cobrar Pendentes por E-mail"</strong> (Central de Planos de Ação SGQ) e <strong>"Enviar Resumo por E-mail"</strong> (Indicadores Fora da Meta).
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Servidor SMTP (Host)</label>
+              <input
+                type="text"
+                name="SMTP_HOST"
+                value={smtp.SMTP_HOST}
+                onChange={handleSmtpChange}
+                placeholder="Ex: smtp.gmail.com ou smtp.office365.com"
+                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Porta SMTP</label>
+              <input
+                type="text"
+                name="SMTP_PORT"
+                value={smtp.SMTP_PORT}
+                onChange={handleSmtpChange}
+                placeholder="Ex: 587 ou 465"
+                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Usuário / E-mail de Autenticação</label>
+              <input
+                type="text"
+                name="SMTP_USER"
+                value={smtp.SMTP_USER}
+                onChange={handleSmtpChange}
+                placeholder="Ex: alertas@hospital.com.br"
+                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Senha / Senha de Aplicativo</label>
+              <input
+                type="password"
+                name="SMTP_PASS"
+                value={smtp.SMTP_PASS}
+                onChange={handleSmtpChange}
+                placeholder="Digite a senha do SMTP..."
+                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nome e E-mail do Remetente (From)</label>
+            <input
+              type="text"
+              name="SMTP_FROM"
+              value={smtp.SMTP_FROM}
+              onChange={handleSmtpChange}
+              placeholder='Ex: "Gestão da Qualidade - Hospital" <alertas@hospital.com.br>'
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap', borderTop: '1px solid var(--panel-border)', paddingTop: '16px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1, minWidth: '260px' }}>
+              <input
+                type="email"
+                value={testEmail}
+                onChange={e => setTestEmail(e.target.value)}
+                placeholder="E-mail para testar envio..."
+                style={{ flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', padding: '10px 12px', borderRadius: '6px', outline: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={handleTestSmtp}
+                disabled={testingSmtp}
+                style={{ background: '#10b981', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+              >
+                <Send size={16} /> {testingSmtp ? 'Enviando...' : 'Testar E-mail'}
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingSmtp}
+              style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {savingSmtp ? 'Salvando...' : <><Save size={18} /> Salvar SMTP</>}
             </button>
           </div>
         </form>
